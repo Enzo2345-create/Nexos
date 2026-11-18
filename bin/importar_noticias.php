@@ -1,6 +1,4 @@
 <?php
-// Importação manual (ou agendada) das notícias.
-// Uso no XAMPP:  C:\xampp\php\php.exe C:\xampp\htdocs\nexos\bin\importar_noticias.php
 declare(strict_types=1);
 
 spl_autoload_register(function (string $class) {

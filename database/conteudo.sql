@@ -1,25 +1,20 @@
--- =========================================================
--- NEXOS / Raízes — Artigos e Notícias vindos do banco
--- Execute no phpMyAdmin (aba SQL) com o banco "nexos" já criado.
--- Pode ser executado mais de uma vez: ele não duplica os dados.
--- =========================================================
 USE nexos;
 
 CREATE TABLE IF NOT EXISTS Categoria (
     id_categoria INT PRIMARY KEY AUTO_INCREMENT,
-    slug VARCHAR(30)  NOT NULL UNIQUE,   -- usado no filtro do site (historia, indigena...)
-    nome VARCHAR(60)  NOT NULL           -- texto exibido (História, Povos indígenas...)
+    slug VARCHAR(30)  NOT NULL UNIQUE,   
+    nome VARCHAR(60)  NOT NULL           
 ) CHARACTER SET utf8mb4;
 
 CREATE TABLE IF NOT EXISTS Artigo (
     id_artigo INT PRIMARY KEY AUTO_INCREMENT,
     id_categoria INT NOT NULL,
     titulo VARCHAR(200) NOT NULL,
-    resumo VARCHAR(300) NOT NULL,        -- texto curto do cartão
-    conteudo TEXT NOT NULL,              -- HTML do artigo (<p>...</p>), aberto no modal
-    imagem VARCHAR(255) NULL,            -- caminho dentro de public/, ex.: assets/artigo-historia.jpg
+    resumo VARCHAR(300) NOT NULL,        
+    conteudo TEXT NOT NULL,              
+    imagem VARCHAR(255) NULL,            
     imagem_alt VARCHAR(255) NULL,
-    icone VARCHAR(50) NULL,              -- ícone bootstrap quando não há imagem, ex.: bi-people
+    icone VARCHAR(50) NULL,             
     publicado TINYINT(1) NOT NULL DEFAULT 1,
     data_publicacao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     id_admin INT NULL,
@@ -29,12 +24,12 @@ CREATE TABLE IF NOT EXISTS Artigo (
 
 CREATE TABLE IF NOT EXISTS Noticia (
     id_noticia INT PRIMARY KEY AUTO_INCREMENT,
-    rotulo VARCHAR(40) NOT NULL,         -- etiqueta: Brasil, Educação, Dados, Mundo...
-    classe_badge VARCHAR(30) NOT NULL DEFAULT 'badge-historia',  -- cor da etiqueta
+    rotulo VARCHAR(40) NOT NULL,         
+    classe_badge VARCHAR(30) NOT NULL DEFAULT 'badge-historia', 
     titulo VARCHAR(200) NOT NULL,
     resumo VARCHAR(300) NOT NULL,
-    imagem VARCHAR(255) NULL,            -- usada só na notícia em destaque
-    link VARCHAR(255) NULL,              -- endereço da matéria (opcional)
+    imagem VARCHAR(255) NULL,            
+    link VARCHAR(255) NULL,              
     destaque TINYINT(1) NOT NULL DEFAULT 0,
     publicado TINYINT(1) NOT NULL DEFAULT 1,
     data_publicacao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -42,7 +37,7 @@ CREATE TABLE IF NOT EXISTS Noticia (
     CONSTRAINT fk_noticia_admin FOREIGN KEY (id_admin) REFERENCES Administrador(id_pessoa) ON DELETE SET NULL
 ) CHARACTER SET utf8mb4;
 
--- ---------- Dados iniciais (só entram se as tabelas estiverem vazias) ----------
+
 INSERT INTO Categoria (slug, nome)
 SELECT * FROM (
     SELECT 'historia' AS slug, 'História' AS nome

@@ -169,126 +169,46 @@
           <h2 class="section-title">Artigos</h2>
           <div class="d-flex flex-wrap gap-2" id="filtroArtigos">
             <button class="btn-chip active" data-filter="todos">Todos</button>
-            <button class="btn-chip" data-filter="historia">História</button>
-            <button class="btn-chip" data-filter="indigena">Povos indígenas</button>
-            <button class="btn-chip" data-filter="educacao">Educação antirracista</button>
-            <button class="btn-chip" data-filter="imigracao">Imigração</button>
+            <?php foreach ($categorias as $cat): ?>
+              <button class="btn-chip" data-filter="<?= e($cat['slug']) ?>"><?= e($cat['nome']) ?></button>
+            <?php endforeach; ?>
           </div>
         </div>
 
+        <?php if (!empty($conteudoErro)): ?>
+          <div class="alert alert-warning" role="alert"><?= e($conteudoErro) ?></div>
+        <?php elseif (empty($artigos)): ?>
+          <p class="text-soft">Ainda não há artigos publicados.</p>
+        <?php endif; ?>
+
         <div class="row g-4" id="listaArtigos">
-          <!-- Artigo 1 -->
-          <div class="col-md-6 col-lg-4 artigo reveal" data-cat="historia">
-            <article class="card-raizes">
-              <img src="<?= asset('assets/artigo-historia.jpg') ?>" class="card-img-top" alt="Mãos de diferentes tons de pele tecendo juntas um tecido colorido" loading="lazy" width="1024" height="768">
-              <div class="card-body-rz">
-                <span class="badge-cat badge-historia">História</span>
-                <h3>O contexto histórico da formação étnico-racial brasileira</h3>
-                <p>Da colonização à abolição sem reparação: como o passado explica as desigualdades de hoje.</p>
-                <button class="btn-read" data-artigo="artigo-1">Ler artigo <i class="bi bi-arrow-right"></i></button>
-              </div>
-            </article>
-          </div>
-          <!-- Artigo 2 -->
-          <div class="col-md-6 col-lg-4 artigo reveal" data-cat="indigena">
-            <article class="card-raizes">
-              <img src="<?= asset('assets/artigo-indigena.jpg') ?>" class="card-img-top" alt="Menina indígena com pintura corporal lendo um livro sob uma árvore, à beira de um rio" loading="lazy" width="1024" height="768">
-              <div class="card-body-rz">
-                <span class="badge-cat badge-indigena">Povos indígenas</span>
-                <h3>Saberes indígenas e africanos que o Brasil precisa conhecer</h3>
-                <p>Muito além da arte: conhecimentos científicos, ecológicos e filosóficos historicamente invisibilizados.</p>
-                <button class="btn-read" data-artigo="artigo-2">Ler artigo <i class="bi bi-arrow-right"></i></button>
-              </div>
-            </article>
-          </div>
-          <!-- Artigo 3 -->
-          <div class="col-md-6 col-lg-4 artigo reveal" data-cat="educacao">
-            <article class="card-raizes">
-              <img src="<?= asset('assets/artigo-escola.jpg') ?>" class="card-img-top" alt="Professora negra apontando para o mapa da África e da América do Sul enquanto alunos levantam a mão" loading="lazy" width="1024" height="768">
-              <div class="card-body-rz">
-                <span class="badge-cat badge-educacao">Educação antirracista</span>
-                <h3>Lei 10.639/2003: o que diz e por que importa na sua escola</h3>
-                <p>A lei tornou obrigatório o ensino de história e cultura afro-brasileira. Mas ela já é realidade?</p>
-                <button class="btn-read" data-artigo="artigo-3">Ler artigo <i class="bi bi-arrow-right"></i></button>
-              </div>
-            </article>
-          </div>
-          <!-- Artigo 4 -->
-          <div class="col-md-6 col-lg-4 artigo reveal" data-cat="historia">
-            <article class="card-raizes">
-              <div class="card-pattern"><i class="bi bi-people" aria-hidden="true"></i></div>
-              <div class="card-body-rz">
-                <span class="badge-cat badge-historia">História</span>
-                <h3>O mito da “democracia racial”</h3>
-                <p>Por que a ideia de convivência harmoniosa entre as raças esconde o preconceito no Brasil.</p>
-                <button class="btn-read" data-artigo="artigo-4">Ler artigo <i class="bi bi-arrow-right"></i></button>
-              </div>
-            </article>
-          </div>
-          <!-- Artigo 5 -->
-          <div class="col-md-6 col-lg-4 artigo reveal" data-cat="imigracao">
-            <article class="card-raizes">
-              <div class="card-pattern"><i class="bi bi-globe-americas" aria-hidden="true"></i></div>
-              <div class="card-body-rz">
-                <span class="badge-cat badge-imigracao">Imigração</span>
-                <h3>Xenofobia: o debate também é sobre imigrantes</h3>
-                <p>Venezuelanos, haitianos, bolivianos, árabes, chineses e povos ciganos também enfrentam preconceito.</p>
-                <button class="btn-read" data-artigo="artigo-5">Ler artigo <i class="bi bi-arrow-right"></i></button>
-              </div>
-            </article>
-          </div>
-          <!-- Artigo 6 -->
-          <div class="col-md-6 col-lg-4 artigo reveal" data-cat="educacao">
-            <article class="card-raizes">
-              <div class="card-pattern"><i class="bi bi-lightbulb" aria-hidden="true"></i></div>
-              <div class="card-body-rz">
-                <span class="badge-cat badge-educacao">Educação antirracista</span>
-                <h3>Pensamento crítico contra estereótipos</h3>
-                <p>Como identificar discriminações no dia a dia e transformar o debate em mudança de atitude.</p>
-                <button class="btn-read" data-artigo="artigo-6">Ler artigo <i class="bi bi-arrow-right"></i></button>
-              </div>
-            </article>
-          </div>
+          <?php foreach ($artigos as $a): ?>
+            <div class="col-md-6 col-lg-4 artigo reveal" data-cat="<?= e($a['slug']) ?>">
+              <article class="card-raizes">
+                <?php if (!empty($a['imagem'])): ?>
+                  <img src="<?= asset($a['imagem']) ?>" class="card-img-top" alt="<?= e($a['imagem_alt']) ?>" loading="lazy" width="1024" height="768">
+                <?php else: ?>
+                  <div class="card-pattern"><i class="bi <?= e($a['icone'] ?: 'bi-journal-text') ?>" aria-hidden="true"></i></div>
+                <?php endif; ?>
+                <div class="card-body-rz">
+                  <span class="badge-cat badge-<?= e($a['slug']) ?>"><?= e($a['categoria']) ?></span>
+                  <h3><?= e($a['titulo']) ?></h3>
+                  <p><?= e($a['resumo']) ?></p>
+                  <button class="btn-read" data-artigo="artigo-<?= (int) $a['id_artigo'] ?>">Ler artigo <i class="bi bi-arrow-right"></i></button>
+                </div>
+              </article>
+            </div>
+          <?php endforeach; ?>
         </div>
 
         <!-- Conteúdo completo dos artigos (exibido no modal) -->
         <div class="d-none">
-          <div id="artigo-1" data-titulo="O contexto histórico da formação étnico-racial brasileira" data-img="<?= asset('assets/artigo-historia.jpg') ?>" data-cat="História">
-            <p>O processo de colonização iniciado pelos portugueses no século XVI foi determinante para a construção das desigualdades e da hierarquização racial no país. A exploração inicial pautou-se na invasão territorial, no espoliamento cultural e na violência contra os povos originários.</p>
-            <p>Com a resistência e o genocídio das populações indígenas, a empresa colonial introduziu o tráfico transatlântico de africanos escravizados. Durante mais de três séculos, a população africana e seus descendentes foram desprovidos de direitos básicos, humanidade e identidade (MUNANGA, 2008).</p>
-            <p>Com o fim oficial da escravidão em 1888, a abolição ocorreu sem políticas de reparação, integração social ou acesso à terra e à educação. Dados do IBGE (2022) mostram que as disparidades raciais na educação, na renda e no mercado de trabalho são desdobramentos diretos desse processo histórico.</p>
-            <p class="fw-semibold mb-0">Para debater: que marcas desse passado você percebe na sua cidade ou escola?</p>
-          </div>
-          <div id="artigo-2" data-titulo="Saberes indígenas e africanos que o Brasil precisa conhecer" data-img="<?= asset('assets/artigo-indigena.jpg') ?>" data-cat="Povos indígenas">
-            <p>Segundo a UNESCO, a diversidade étnico-racial abrange diferentes sistemas de saberes, cosmovisões e práticas sociais que moldam as relações dos grupos com o território, a saúde, o ensino e o trabalho.</p>
-            <p>As matrizes africanas e indígenas contribuíram não apenas artisticamente, mas com conhecimentos científicos, ecológicos e filosóficos, que permanecem nas comunidades tradicionais e foram historicamente invisibilizados.</p>
-            <p>Para o IBGE, no contexto da população indígena, “etnia” é uma comunidade definida por afinidades linguísticas, culturais e sociais, correspondendo a um povo com identidade cultural própria.</p>
-            <p class="fw-semibold mb-0">Para debater: quais saberes indígenas ou africanos estão presentes no seu dia a dia sem que você perceba?</p>
-          </div>
-          <div id="artigo-3" data-titulo="Lei 10.639/2003: o que diz e por que importa na sua escola" data-img="<?= asset('assets/artigo-escola.jpg') ?>" data-cat="Educação antirracista">
-            <p>A Lei nº 10.639/2003 torna obrigatório o ensino de história e cultura afro-brasileira nas escolas. Embora prevista na legislação, sua implementação prática ainda enfrenta limitações, como a escassez de materiais acessíveis e de espaços digitais pensados para esse fim.</p>
-            <p>Estudos no campo da educação antirracista demonstram que o conhecimento da história e da cultura afro-brasileira e indígena contribui para a redução de práticas discriminatórias (MUNANGA, 2008).</p>
-            <p>Iniciativas como a Escola Maria Felipa, o Projeto ANANSI (CEERT) e os cursos da plataforma Escolas Conectadas são avanços importantes, mas se voltam principalmente a professores e adultos.</p>
-            <p class="fw-semibold mb-0">Para debater: como a sua escola trabalha esse tema ao longo do ano?</p>
-          </div>
-          <div id="artigo-4" data-titulo="O mito da “democracia racial”" data-cat="História">
-            <p>Após a abolição, o Estado brasileiro incentivou teorias de hierarquização racial, como a ideologia do branqueamento, promovendo a imigração europeia para diluir a presença negra na população.</p>
-            <p>Depois, difundiu-se a tese da “democracia racial”: a falsa ideia de uma convivência harmoniosa entre as raças, que mascara o preconceito e deslegitima as lutas do movimento negro. É a crença de que a população negra teria as mesmas oportunidades de ascensão que os demais.</p>
-            <p>Reconhecer casos de racismo e de injúria racial é o primeiro passo para a conscientização e evita o apagamento da violência sofrida pelos povos indígenas e africanos.</p>
-            <p class="fw-semibold mb-0">Para debater: você já ouviu frases como “no Brasil não existe racismo”? Como responder a elas?</p>
-          </div>
-          <div id="artigo-5" data-titulo="Xenofobia: o debate também é sobre imigrantes" data-cat="Imigração">
-            <p>O debate étnico-racial não se restringe aos povos indígenas e aos descendentes de africanos. Ele também envolve etnias tratadas com indiferença no Brasil, como venezuelanos, haitianos, bolivianos, árabes e chineses — muitas vezes atacados nas redes sociais.</p>
-            <p>Ainda persistem preconceitos contra os povos ciganos, injustamente associados à vadiagem. Fora do país, a islamofobia na França e atitudes desrespeitosas contra brasileiros, como em jogos de futebol, mostram que o problema é global.</p>
-            <p>Mais do que apontar atitudes erradas, é preciso compreender o que leva as pessoas a agirem assim, para que o resultado do debate seja a reflexão e a mudança, e não o ódio.</p>
-            <p class="fw-semibold mb-0">Para debater: como acolher colegas imigrantes na sua escola?</p>
-          </div>
-          <div id="artigo-6" data-titulo="Pensamento crítico contra estereótipos" data-cat="Educação antirracista">
-            <p>Estereótipo é uma ideia generalizada e simplificada atribuída a determinado grupo de pessoas. Ele aparece em piadas, apelidos, filmes, propagandas e até em materiais didáticos.</p>
-            <p>O pensamento crítico — a capacidade de analisar informações, questionar ideias e formar opiniões de maneira reflexiva — é a principal ferramenta para identificar discriminações no cotidiano, em casa, na rua e na escola.</p>
-            <p>A desinformação e os conteúdos preconceituosos nas redes ajudam a manter estereótipos. Checar fontes e ouvir quem vive a experiência faz toda a diferença.</p>
-            <p class="fw-semibold mb-0">Para debater: qual estereótipo você já percebeu na TV ou nas redes sociais esta semana?</p>
-          </div>
+          <?php foreach ($artigos as $a): ?>
+            <div id="artigo-<?= (int) $a['id_artigo'] ?>"
+                 data-titulo="<?= e($a['titulo']) ?>"
+                 <?php if (!empty($a['imagem'])): ?>data-img="<?= asset($a['imagem']) ?>"<?php endif; ?>
+                 data-cat="<?= e($a['categoria']) ?>"><?= $a['conteudo'] /* HTML escrito pela equipe e guardado no banco */ ?></div>
+          <?php endforeach; ?>
         </div>
       </div>
     </section>
@@ -300,51 +220,37 @@
           <h2 class="section-title">Notícias</h2>
           <a href="#noticias" class="link-more">Ver todas <i class="bi bi-arrow-right"></i></a>
         </div>
+        <?php if (!$noticiaDestaque && empty($noticias)): ?>
+          <p class="text-soft">Ainda não há notícias publicadas.</p>
+        <?php endif; ?>
         <div class="row g-4 g-lg-5">
+          <?php if ($noticiaDestaque): ?>
+            <div class="col-lg-6 reveal">
+              <a href="<?= e($noticiaDestaque['link'] ?: '#comunidade') ?>" class="news-featured"<?= $noticiaDestaque['link'] ? ' target="_blank" rel="noopener"' : '' ?>>
+                <?php if (!empty($noticiaDestaque['imagem'])): ?>
+                  <img src="<?= asset($noticiaDestaque['imagem']) ?>" alt="" loading="lazy" width="1024" height="768">
+                <?php endif; ?>
+                <div class="overlay"></div>
+                <div class="content">
+                  <span class="badge-cat <?= e($noticiaDestaque['classe_badge']) ?> align-self-start mb-3"><?= e($noticiaDestaque['rotulo']) ?></span>
+                  <h3><?= e($noticiaDestaque['titulo']) ?></h3>
+                  <p class="mb-0 opacity-75"><?= e($noticiaDestaque['resumo']) ?></p>
+                </div>
+              </a>
+            </div>
+          <?php endif; ?>
           <div class="col-lg-6 reveal">
-            <a href="#comunidade" class="news-featured">
-              <img src="<?= asset('assets/artigo-historia.jpg') ?>" alt="" loading="lazy" width="1024" height="768">
-              <div class="overlay"></div>
-              <div class="content">
-                <span class="badge-cat badge-destaque align-self-start mb-3">Destaque</span>
-                <h3>Plataforma Raízes é apresentada a estudantes do IF Baiano – Campus Guanambi</h3>
-                <p class="mb-0 opacity-75">Projeto Integrador propõe fórum, artigos e gamificação para levar o debate étnico-racial ao dia a dia da escola.</p>
+            <?php foreach ($noticias as $n): ?>
+              <?php [$dia, $mes] = dia_mes($n['data_publicacao']); ?>
+              <div class="news-item">
+                <div class="news-date"><strong><?= e($dia) ?></strong><span><?= e($mes) ?></span></div>
+                <div>
+                  <span class="badge-cat <?= e($n['classe_badge']) ?>"><?= e($n['rotulo']) ?></span>
+                  <h3 class="mt-2"><a href="<?= e($n['link'] ?: '#') ?>"<?= $n['link'] ? ' target="_blank" rel="noopener"' : '' ?>><?= e($n['titulo']) ?></a></h3>
+                  <p class="text-soft small mb-0"><?= e($n['resumo']) ?></p>
+                </div>
               </div>
-            </a>
-          </div>
-          <div class="col-lg-6 reveal">
-            <div class="news-item">
-              <div class="news-date"><strong>10</strong><span>nov</span></div>
-              <div>
-                <span class="badge-cat badge-historia">Brasil</span>
-                <h3 class="mt-2"><a href="#">Novembro Negro: escolas promovem semana de debates sobre consciência negra</a></h3>
-                <p class="text-soft small mb-0">Atividades valorizam a história e a cultura afro-brasileira em diversas redes de ensino.</p>
-              </div>
-            </div>
-            <div class="news-item">
-              <div class="news-date"><strong>04</strong><span>nov</span></div>
-              <div>
-                <span class="badge-cat badge-educacao">Educação</span>
-                <h3 class="mt-2"><a href="#">Escola Maria Felipa é referência em educação afro-brasileira</a></h3>
-                <p class="text-soft small mb-0">Idealizada pela professora Bárbara Carine, é a primeira escola afro-brasileira registrada pelo MEC.</p>
-              </div>
-            </div>
-            <div class="news-item">
-              <div class="news-date"><strong>28</strong><span>out</span></div>
-              <div>
-                <span class="badge-cat badge-indigena">Dados</span>
-                <h3 class="mt-2"><a href="#">IBGE: desigualdades raciais persistem em educação, renda e trabalho</a></h3>
-                <p class="text-soft small mb-0">Indicadores reforçam a necessidade de ações de conscientização e inclusão social.</p>
-              </div>
-            </div>
-            <div class="news-item">
-              <div class="news-date"><strong>15</strong><span>out</span></div>
-              <div>
-                <span class="badge-cat badge-imigracao">Mundo</span>
-                <h3 class="mt-2"><a href="#">Imigrantes venezuelanos relatam ataques xenófobos nas redes</a></h3>
-                <p class="text-soft small mb-0">Especialistas defendem educação digital para combater o discurso de ódio.</p>
-              </div>
-            </div>
+            <?php endforeach; ?>
           </div>
         </div>
       </div>

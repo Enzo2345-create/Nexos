@@ -30,4 +30,16 @@ if (
     exit('Página não encontrada');
 }
 
-(new $controller())->$method(...$params);
+try {
+    (new $controller())->$method(...$params);
+} catch (PDOException $e) {
+    error_log('[nexos] ' . $e->getMessage());
+    http_response_code(503);
+    echo '<!DOCTYPE html><html lang="pt-BR"><meta charset="UTF-8"><title>Banco indisponível</title>'
+        . '<body style="font-family:sans-serif;max-width:560px;margin:15vh auto;padding:0 1rem">'
+        . '<h1>Não foi possível acessar o banco de dados</h1>'
+        . '<p>Verifique se o <strong>MySQL</strong> está iniciado no painel do XAMPP e se os dados em '
+        . '<code>config/database.php</code> estão corretos.</p>'
+        . '<p><small>Detalhe técnico: ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . '</small></p>'
+        . '</body></html>';
+}

@@ -21,3 +21,10 @@ function format_cpf(?string $cpf): string
     return preg_replace('/(\d{3})(\d{3})(\d{3})(\d{2})/', '$1.$2.$3-$4', $digits);
 }
 
+function dia_mes(string $data): array
+{
+    $meses = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+    $t = strtotime($data);
+
+    return [date('d', $t), $meses[(int) date('n', $t) - 1]];
+}

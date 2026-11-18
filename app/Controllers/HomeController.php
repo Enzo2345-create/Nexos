@@ -1,11 +1,37 @@
 <?php
 namespace App\Controllers;
 
+use App\Models\Conteudo;
+use App\Services\FeedImporter;
+
 class HomeController
 {
     public function index(): void
     {
-        $this->render('home/index', [
+        $dados = [
+            'categorias' => [],
+            'artigos' => [],
+            'noticiaDestaque' => null,
+            'noticias' => [],
+            'conteudoErro' => '',
+        ];
+
+        // Busca notícias novas na internet (no máximo a cada 6 horas) antes de ler do banco.
+        FeedImporter::seNecessario(6);
+
+        // Se o banco estiver fora do ar ou sem as tabelas, a página abre mesmo assim.
+        try {
+            $dados['categorias'] = Conteudo::categorias();
+            $dados['artigos'] = Conteudo::artigos();
+            $dados['noticiaDestaque'] = Conteudo::noticiaDestaque();
+            $dados['noticias'] = Conteudo::noticias(4);
+        } catch (\PDOException $e) {
+            error_log('[nexos] conteúdo: ' . $e->getMessage());
+            $dados['conteudoErro'] = 'Não foi possível carregar o conteúdo do banco. '
+                . 'Confira se o MySQL está ligado e se o arquivo database/conteudo.sql foi importado.';
+        }
+
+        $this->render('home/index', $dados + [
             'title' => 'Raízes | Fórum de Discussão sobre Diversidade Étnico-Racial',
             'pageScript' => 'js/script.js',
             'homePage' => true,

@@ -3,8 +3,14 @@ namespace App\Services;
 
 use App\Models\Database;
 
+/**
+ * Lê feeds RSS/Atom e guarda no banco apenas o que tem a ver com diversidade étnico-racial:
+ * título, resumo curto e link da matéria original (o texto completo fica no site de origem).
+ * Notícias vão para a tabela noticia; artigos para a tabela artigo. Repetidos são ignorados pelo link.
+ */
 class FeedImporter
 {
+    /** Roda a importação no máximo uma vez a cada $horas horas. */
     public static function seNecessario(int $horas = 6): void
     {
         $dir = __DIR__ . '/../../storage';
@@ -21,41 +27,81 @@ class FeedImporter
         try {
             self::importar();
         } catch (\PDOException $e) {
-            @unlink($arquivo); // banco fora do ar: tenta de novo na próxima visita
+            @unlink($arquivo); // banco fora do ar ou sem a migração: tenta de novo na próxima visita
             error_log('[nexos] importação: ' . $e->getMessage());
         } catch (\Throwable $e) {
             error_log('[nexos] importação: ' . $e->getMessage());
         }
     }
 
-    /** @return array{novas:int, erros:string[]} */
-    public static function importar(): array
+    /**
+     * @param bool $gravar false = só simula (não grava nada, mostra o que entraria e a pontuação)
+     * @return array{noticias:int, artigos:int, novas:int, feeds:array, aceitas:string[], erros:string[]}
+     */
+    public static function importar(bool $gravar = true): array
     {
         $config = require __DIR__ . '/../../config/feeds.php';
-        $palavras = array_map([self::class, 'normalizar'], $config['palavras_chave']);
-        $limiteData = time() - ((int) $config['max_dias']) * 86400;
+        $inicio = microtime(true);
+
+        $fortes = array_map([self::class, 'normalizar'], $config['termos_fortes']);
+        $fracos = array_map([self::class, 'normalizar'], $config['termos_fracos']);
+        $ignorar = array_map([self::class, 'normalizar'], $config['ignorar']);
 
         $pdo = Database::connect();
-        $existe = $pdo->prepare('SELECT 1 FROM noticia WHERE link = ? LIMIT 1');
-        $insere = $pdo->prepare(
+
+        $categorias = [];
+        foreach ($pdo->query('SELECT id_categoria, slug FROM categoria') as $c) {
+            $categorias[$c['slug']] = (int) $c['id_categoria'];
+        }
+
+        $existe = [
+            'noticia' => $pdo->prepare('SELECT 1 FROM noticia WHERE link = ? LIMIT 1'),
+            'artigo' => $pdo->prepare('SELECT 1 FROM artigo WHERE link = ? LIMIT 1'),
+        ];
+        $insereNoticia = $pdo->prepare(
             'INSERT INTO noticia (rotulo, classe_badge, titulo, resumo, link, destaque, publicado, data_publicacao)
              VALUES (?, ?, ?, ?, ?, 0, 1, ?)'
         );
+        $insereArtigo = $pdo->prepare(
+            'INSERT INTO artigo (id_categoria, titulo, resumo, conteudo, icone, link, fonte, publicado, data_publicacao)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)'
+        );
 
-        $novas = 0;
+        $novos = ['noticia' => 0, 'artigo' => 0];
         $erros = [];
+        $feedsInfo = [];
+        $aceitas = [];
+        $vistos = [];
 
         foreach ($config['feeds'] as $feed) {
+            $tipo = ($feed['tipo'] ?? 'noticia') === 'artigo' ? 'artigo' : 'noticia';
+            $limite = (int) $config['por_execucao'][$tipo];
+
+            $feedsInfo[] = ['url' => $feed['url'], 'lidos' => 0, 'aceitos' => 0];
+            $idx = count($feedsInfo) - 1;
+
+            if ($novos[$tipo] >= $limite) {
+                continue;
+            }
+            if (microtime(true) - $inicio > (int) $config['tempo_max_segundos']) {
+                $erros[] = 'Tempo esgotado antes de ler ' . $feed['url'];
+                continue;
+            }
+
             $corpo = self::baixar($feed['url']);
             if ($corpo === null) {
                 $erros[] = 'Não foi possível baixar ' . $feed['url'];
                 continue;
             }
 
+            $limiteData = time() - ((int) $config['max_dias'][$tipo]) * 86400;
+
             foreach (self::lerItens($corpo) as $item) {
-                if ($novas >= (int) $config['por_execucao']) {
-                    break 2;
+                if ($novos[$tipo] >= $limite) {
+                    break;
                 }
+                $feedsInfo[$idx]['lidos']++;
+
                 if (!preg_match('#^https?://#i', $item['link'])) {
                     continue; // só aceita links http/https
                 }
@@ -64,34 +110,67 @@ class FeedImporter
                 $resumo = self::limpar($item['resumo']);
                 $texto = self::normalizar($titulo . ' ' . $resumo);
 
-                if (!self::temTema($texto, $palavras)) {
+                $pontos = self::pontuar($texto, $fortes, $fracos, $ignorar, (int) $config['minimo_termos_fracos']);
+                if ($pontos === 0) {
                     continue;
                 }
 
-                $data = strtotime($item['data']) ?: time();
-                $data = min($data, time());
+                $data = min(strtotime($item['data']) ?: time(), time());
                 if ($data < $limiteData) {
                     continue;
                 }
 
-                $existe->execute([$item['link']]);
-                if ($existe->fetchColumn()) {
+                if (isset($vistos[$item['link']])) {
+                    continue;
+                }
+                $existe[$tipo]->execute([$item['link']]);
+                if ($existe[$tipo]->fetchColumn()) {
                     continue;
                 }
 
-                $insere->execute([
-                    mb_substr($feed['nome'], 0, 40),
-                    self::classeBadge($texto),
-                    self::cortar($titulo, 200),
-                    self::cortar($resumo, 300),
-                    mb_substr($item['link'], 0, 255),
-                    date('Y-m-d H:i:s', $data),
-                ]);
-                $novas++;
+                $slug = self::categoria($texto);
+                $dataSql = date('Y-m-d H:i:s', $data);
+
+                if ($gravar) {
+                    if ($tipo === 'noticia') {
+                        $insereNoticia->execute([
+                            mb_substr($feed['nome'], 0, 40),
+                            'badge-' . $slug,
+                            self::cortar($titulo, 200),
+                            self::cortar($resumo, 300),
+                            mb_substr($item['link'], 0, 255),
+                            $dataSql,
+                        ]);
+                    } else {
+                        $resumoCurto = self::cortar($resumo, 300);
+                        $insereArtigo->execute([
+                            $categorias[$slug] ?? reset($categorias),
+                            self::cortar($titulo, 200),
+                            $resumoCurto,
+                            '<p>' . htmlspecialchars($resumoCurto, ENT_QUOTES, 'UTF-8') . '</p>',
+                            'bi-box-arrow-up-right',
+                            mb_substr($item['link'], 0, 255),
+                            mb_substr($feed['nome'], 0, 60),
+                            $dataSql,
+                        ]);
+                    }
+                }
+
+                $vistos[$item['link']] = true;
+                $novos[$tipo]++;
+                $feedsInfo[$idx]['aceitos']++;
+                $aceitas[] = sprintf('[%s] %d pts | %s (%s)', $tipo, $pontos, mb_substr($titulo, 0, 90), $feed['nome']);
             }
         }
 
-        return ['novas' => $novas, 'erros' => $erros];
+        return [
+            'noticias' => $novos['noticia'],
+            'artigos' => $novos['artigo'],
+            'novas' => $novos['noticia'] + $novos['artigo'],
+            'feeds' => $feedsInfo,
+            'aceitas' => $aceitas,
+            'erros' => $erros,
+        ];
     }
 
     private static function baixar(string $url): ?string
@@ -101,7 +180,7 @@ class FeedImporter
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_FOLLOWLOCATION => true,
-                CURLOPT_CONNECTTIMEOUT => 3,
+                CURLOPT_CONNECTTIMEOUT => 2,
                 CURLOPT_TIMEOUT => 4,
                 CURLOPT_ENCODING => '',
                 CURLOPT_USERAGENT => 'NexosBot/1.0 (projeto escolar IF Baiano)',
@@ -183,30 +262,56 @@ class FeedImporter
         ]);
     }
 
-    private static function temTema(string $texto, array $palavras): bool
+    /** O termo precisa começar numa palavra ("racial" não casa com "tracial"). */
+    private static function contem(string $texto, string $termo): bool
     {
-        foreach ($palavras as $palavra) {
-            if ($palavra !== '' && strpos($texto, $palavra) !== false) {
-                return true;
+        return $termo !== ''
+            && preg_match('/(?<![a-z0-9])' . preg_quote($termo, '/') . '/u', $texto) === 1;
+    }
+
+    /**
+     * Pontuação do texto: 2 pontos por termo forte diferente, 1 por termo fraco diferente.
+     * Retorna 0 (rejeitado) se não houver nenhum termo forte e os fracos forem menos que o mínimo.
+     */
+    private static function pontuar(string $texto, array $fortes, array $fracos, array $ignorar, int $minimoFracos): int
+    {
+        $pontos = 0;
+        $temForte = false;
+        foreach ($fortes as $termo) {
+            if (self::contem($texto, $termo)) {
+                $temForte = true;
+                $pontos += 2;
             }
         }
 
-        return false;
+        $texto = str_replace($ignorar, ' ', $texto);
+        $achados = 0;
+        foreach ($fracos as $termo) {
+            if (self::contem($texto, $termo)) {
+                $achados++;
+            }
+        }
+
+        if (!$temForte && $achados < $minimoFracos) {
+            return 0;
+        }
+
+        return $pontos + $achados;
     }
 
-    /** Escolhe a cor da etiqueta de acordo com o assunto. */
-    private static function classeBadge(string $texto): string
+    /** Escolhe a categoria (e a cor da etiqueta) pelo assunto. */
+    private static function categoria(string $texto): string
     {
-        if (preg_match('/indigen|quilombol/', $texto)) {
-            return 'badge-indigena';
+        if (preg_match('/indigen|quilomb|funai/', $texto)) {
+            return 'indigena';
         }
         if (preg_match('/xenofob|imigrant|refugiad|migrant/', $texto)) {
-            return 'badge-imigracao';
+            return 'imigracao';
         }
-        if (preg_match('/escola|educacao|ensino|professor|estudante|10\.639/', $texto)) {
-            return 'badge-educacao';
+        if (preg_match('/escola|educacao|ensino|professor|estudante|10\.639|11\.645/', $texto)) {
+            return 'educacao';
         }
 
-        return 'badge-historia';
+        return 'historia';
     }
 }

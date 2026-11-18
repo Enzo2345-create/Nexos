@@ -28,7 +28,7 @@ class HomeController
         } catch (\PDOException $e) {
             error_log('[nexos] conteúdo: ' . $e->getMessage());
             $dados['conteudoErro'] = 'Não foi possível carregar o conteúdo do banco. '
-                . 'Confira se o MySQL está ligado e se o arquivo database/conteudo.sql foi importado.';
+                . 'Confira se o MySQL está ligado e se os arquivos database/conteudo.sql e database/externos.sql foram executados.';
         }
 
         $this->render('home/index', $dados + [

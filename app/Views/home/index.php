@@ -194,7 +194,12 @@
                   <span class="badge-cat badge-<?= e($a['slug']) ?>"><?= e($a['categoria']) ?></span>
                   <h3><?= e($a['titulo']) ?></h3>
                   <p><?= e($a['resumo']) ?></p>
-                  <button class="btn-read" data-artigo="artigo-<?= (int) $a['id_artigo'] ?>">Ler artigo <i class="bi bi-arrow-right"></i></button>
+                  <?php if (!empty($a['link'])): ?>
+                    <p class="small text-soft mb-2">Fonte: <?= e($a['fonte']) ?></p>
+                    <a class="btn-read" style="text-decoration:none" href="<?= e($a['link']) ?>" target="_blank" rel="noopener noreferrer">Ler em <?= e($a['fonte']) ?> <i class="bi bi-box-arrow-up-right"></i></a>
+                  <?php else: ?>
+                    <button class="btn-read" data-artigo="artigo-<?= (int) $a['id_artigo'] ?>">Ler artigo <i class="bi bi-arrow-right"></i></button>
+                  <?php endif; ?>
                 </div>
               </article>
             </div>
@@ -204,6 +209,7 @@
         <!-- Conteúdo completo dos artigos (exibido no modal) -->
         <div class="d-none">
           <?php foreach ($artigos as $a): ?>
+            <?php if (!empty($a['link'])) { continue; } /* artigos externos abrem o site de origem */ ?>
             <div id="artigo-<?= (int) $a['id_artigo'] ?>"
                  data-titulo="<?= e($a['titulo']) ?>"
                  <?php if (!empty($a['imagem'])): ?>data-img="<?= asset($a['imagem']) ?>"<?php endif; ?>

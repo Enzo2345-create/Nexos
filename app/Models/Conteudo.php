@@ -13,18 +13,29 @@ class Conteudo
             ->fetchAll();
     }
 
-    public static function artigos(): array
+    /**
+     * Artigos da equipe (sem link) primeiro; depois os externos mais recentes (com link).
+     */
+    public static function artigos(int $limiteExternos = 6): array
     {
-        return Database::connect()
-            ->query(
-                'SELECT a.id_artigo, a.titulo, a.resumo, a.conteudo, a.imagem, a.imagem_alt, a.icone,
-                        c.slug, c.nome AS categoria
+        $pdo = Database::connect();
+        $base = 'SELECT a.id_artigo, a.titulo, a.resumo, a.conteudo, a.imagem, a.imagem_alt, a.icone,
+                        a.link, a.fonte, c.slug, c.nome AS categoria
                  FROM artigo a
                  INNER JOIN categoria c ON c.id_categoria = a.id_categoria
-                 WHERE a.publicado = 1
-                 ORDER BY a.data_publicacao ASC, a.id_artigo ASC'
-            )
+                 WHERE a.publicado = 1 ';
+
+        $proprios = $pdo
+            ->query($base . 'AND a.link IS NULL ORDER BY a.data_publicacao ASC, a.id_artigo ASC')
             ->fetchAll();
+
+        $stmt = $pdo->prepare(
+            $base . 'AND a.link IS NOT NULL ORDER BY a.data_publicacao DESC, a.id_artigo DESC LIMIT :limite'
+        );
+        $stmt->bindValue(':limite', $limiteExternos, \PDO::PARAM_INT);
+        $stmt->execute();
+
+        return array_merge($proprios, $stmt->fetchAll());
     }
 
     public static function noticiaDestaque(): ?array

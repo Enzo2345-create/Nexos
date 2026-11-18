@@ -3,13 +3,8 @@ namespace App\Services;
 
 use App\Models\Database;
 
-/**
- * Lê feeds RSS/Atom, guarda no banco só o que tem a ver com o tema do fórum
- * (título, resumo curto e link da matéria original) e evita repetidas pelo link.
- */
 class FeedImporter
 {
-    /** Roda a importação no máximo uma vez a cada $horas horas. */
     public static function seNecessario(int $horas = 6): void
     {
         $dir = __DIR__ . '/../../storage';

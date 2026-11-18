@@ -98,7 +98,7 @@ WHERE NOT EXISTS (SELECT 1 FROM Artigo);
 INSERT INTO Noticia (rotulo, classe_badge, titulo, resumo, imagem, destaque, data_publicacao)
 SELECT * FROM (
     SELECT 'Destaque' AS rotulo, 'badge-destaque' AS classe_badge,
-        'Plataforma Raízes é apresentada a estudantes do IF Baiano – Campus Guanambi' AS titulo,
+        'Plataforma Nexos é apresentada a estudantes do IF Baiano – Campus Guanambi' AS titulo,
         'Projeto Integrador propõe fórum, artigos e gamificação para levar o debate étnico-racial ao dia a dia da escola.' AS resumo,
         'assets/artigo-historia.jpg' AS imagem, 1 AS destaque, '2026-11-12 10:00:00' AS data_publicacao
     UNION ALL SELECT 'Brasil', 'badge-historia',

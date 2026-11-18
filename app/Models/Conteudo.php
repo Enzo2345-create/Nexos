@@ -14,10 +14,14 @@ class Conteudo
     }
 
     /**
-     * Artigos da equipe (sem link) primeiro; depois os externos mais recentes (com link).
+     * Artigos externos mais recentes (com link) e, como reserva, os artigos fixos da equipe (sem link).
+     * Quando já há externos suficientes (config 'ocultar_fixos_com_externos'), os fixos não aparecem.
      */
     public static function artigos(int $limiteExternos = 6): array
     {
+        $config = require __DIR__ . '/../../config/feeds.php';
+        $minimo = (int) ($config['ocultar_fixos_com_externos'] ?? 0);
+
         $pdo = Database::connect();
         $base = 'SELECT a.id_artigo, a.titulo, a.resumo, a.conteudo, a.imagem, a.imagem_alt, a.icone,
                         a.link, a.fonte, c.slug, c.nome AS categoria
@@ -25,17 +29,22 @@ class Conteudo
                  INNER JOIN categoria c ON c.id_categoria = a.id_categoria
                  WHERE a.publicado = 1 ';
 
-        $proprios = $pdo
-            ->query($base . 'AND a.link IS NULL ORDER BY a.data_publicacao ASC, a.id_artigo ASC')
-            ->fetchAll();
-
         $stmt = $pdo->prepare(
             $base . 'AND a.link IS NOT NULL ORDER BY a.data_publicacao DESC, a.id_artigo DESC LIMIT :limite'
         );
         $stmt->bindValue(':limite', $limiteExternos, \PDO::PARAM_INT);
         $stmt->execute();
+        $externos = $stmt->fetchAll();
 
-        return array_merge($proprios, $stmt->fetchAll());
+        if ($minimo > 0 && count($externos) >= $minimo) {
+            return $externos;
+        }
+
+        $proprios = $pdo
+            ->query($base . 'AND a.link IS NULL ORDER BY a.data_publicacao ASC, a.id_artigo ASC')
+            ->fetchAll();
+
+        return array_merge($proprios, $externos);
     }
 
     public static function noticiaDestaque(): ?array

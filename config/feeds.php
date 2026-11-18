@@ -43,6 +43,9 @@ return [
     'max_dias' => ['noticia' => 60, 'artigo' => 365],
     // Máximo de itens novos gravados por rodada, por tipo.
     'por_execucao' => ['noticia' => 10, 'artigo' => 6],
+    // Quando houver pelo menos N artigos externos, os artigos fixos da equipe (sem link) ficam
+    // ocultos (continuam no banco). Use 0 para sempre mostrar os fixos junto com os externos.
+    'ocultar_fixos_com_externos' => 3,
     // Para a visita não ficar esperando demais: para de baixar feeds depois desse tempo.
     'tempo_max_segundos' => 12,
 ];

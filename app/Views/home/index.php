@@ -9,7 +9,7 @@
   <!-- ===================== MENU ===================== -->
   <nav class="navbar navbar-expand-lg navbar-raizes sticky-top py-3" id="navbar">
     <div class="container">
-      <a class="brand-raizes" href="#inicio" aria-label="Raízes, voltar ao início">NEXOS<span class="dot" aria-hidden="true"></span></a>
+      <a class="brand-raizes" href="#inicio" aria-label="Nexos, voltar ao início">NEXOS<span class="dot" aria-hidden="true"></span></a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menuPrincipal" aria-controls="menuPrincipal" aria-expanded="false" aria-label="Abrir menu">
         <span class="navbar-toggler-icon"></span>
       </button>
@@ -186,7 +186,11 @@
             <div class="col-md-6 col-lg-4 artigo reveal" data-cat="<?= e($a['slug']) ?>">
               <article class="card-raizes">
                 <?php if (!empty($a['imagem'])): ?>
-                  <img src="<?= asset($a['imagem']) ?>" class="card-img-top" alt="<?= e($a['imagem_alt']) ?>" loading="lazy" width="1024" height="768">
+                  <?php if (!empty($a['link'])): /* foto de um site externo: se não carregar, volta ao cartão com ícone */ ?>
+                    <img src="<?= e($a['imagem']) ?>" class="card-img-top" alt="" loading="lazy" width="1024" height="768" referrerpolicy="no-referrer" onerror="this.outerHTML='&lt;div class=\'card-pattern\'&gt;&lt;i class=\'bi bi-box-arrow-up-right\'&gt;&lt;/i&gt;&lt;/div&gt;'">
+                  <?php else: ?>
+                    <img src="<?= asset($a['imagem']) ?>" class="card-img-top" alt="<?= e($a['imagem_alt']) ?>" loading="lazy" width="1024" height="768">
+                  <?php endif; ?>
                 <?php else: ?>
                   <div class="card-pattern"><i class="bi <?= e($a['icone'] ?: 'bi-journal-text') ?>" aria-hidden="true"></i></div>
                 <?php endif; ?>
@@ -405,7 +409,7 @@
     <div class="container">
       <div class="row g-4 g-lg-5">
         <div class="col-lg-4">
-          <div class="brand mb-3">RAÍZES</div>
+          <div class="brand mb-3">NEXOS</div>
           <p class="mb-0">Um espaço para conversar, ler e aprender sobre a diversidade étnico-racial do Brasil — com respeito e escuta. Projeto Integrador I do Curso Técnico em Informática para Internet — IF Baiano, Campus Guanambi.</p>
         </div>
         <div class="col-6 col-lg-2">
@@ -427,7 +431,10 @@
             <li>Jan Pedro Souza Caires</li>
           </ul>
           <h5 class="mt-4">Orientação</h5>
-          <p class="mb-0">Prof. Cleiton de Miranda Brito · Guanambi – BA</p>
+          <p class="mb-0">Prof. Cleiton de Miranda Brito </p>
+          <p class="mb-0">Prof. Welison de Brito dos Santos Batista </p>
+          <p class="mb-0">Prof. Jamile da Silva Ramos </p>
+          <p class="mb-0">· Guanambi – BA</p>
         </div>
         <div class="col-lg-3">
           <h5>Combinado da comunidade</h5>
@@ -435,7 +442,7 @@
         </div>
       </div>
       <hr class="my-4">
-      <p class="small mb-0 text-center">© 2026 Raízes · Feito com respeito à diversidade.</p>
+      <p class="small mb-0 text-center">© 2026 Nexos · Feito com respeito à diversidade.</p>
     </div>
   </footer>
 
@@ -507,7 +514,7 @@
       <form class="modal-content" id="formEntrar" method="post" action="<?= url('auth/login') ?>">
         <input type="hidden" name="csrf" value="<?= e($csrfToken) ?>">
         <div class="modal-header border-0">
-          <h2 class="modal-title h3" id="modalEntrarTitulo">Entrar no Raízes</h2>
+          <h2 class="modal-title h3" id="modalEntrarTitulo">Entrar no Nexos</h2>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
         </div>
         <div class="modal-body">

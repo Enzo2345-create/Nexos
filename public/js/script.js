@@ -1,10 +1,3 @@
-/* =========================================================
-   RAÍZES — Interações da página
-   (Fórum, pontos, artigos, quiz e animações)
-   Os dados ficam salvos no navegador (localStorage).
-   Para um fórum real, troque o localStorage por chamadas
-   ao back-end (PHP/Python + MySQL).
-   ========================================================= */
 (function () {
   "use strict";
 

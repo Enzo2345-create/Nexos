@@ -63,9 +63,10 @@ class FeedImporter
              VALUES (?, ?, ?, ?, ?, 0, 1, ?)'
         );
         $insereArtigo = $pdo->prepare(
-            'INSERT INTO artigo (id_categoria, titulo, resumo, conteudo, icone, link, fonte, publicado, data_publicacao)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)'
+            'INSERT INTO artigo (id_categoria, titulo, resumo, conteudo, imagem, icone, link, fonte, publicado, data_publicacao)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)'
         );
+        $atualizaImagem = $pdo->prepare('UPDATE artigo SET imagem = ? WHERE link = ? AND imagem IS NULL');
 
         $novos = ['noticia' => 0, 'artigo' => 0];
         $erros = [];
@@ -125,6 +126,9 @@ class FeedImporter
                 }
                 $existe[$tipo]->execute([$item['link']]);
                 if ($existe[$tipo]->fetchColumn()) {
+                    if ($gravar && $tipo === 'artigo' && $item['imagem'] !== null) {
+                        $atualizaImagem->execute([$item['imagem'], $item['link']]); // completa artigos antigos sem foto
+                    }
                     continue;
                 }
 
@@ -148,6 +152,7 @@ class FeedImporter
                             self::cortar($titulo, 200),
                             $resumoCurto,
                             '<p>' . htmlspecialchars($resumoCurto, ENT_QUOTES, 'UTF-8') . '</p>',
+                            $item['imagem'],
                             'bi-box-arrow-up-right',
                             mb_substr($item['link'], 0, 255),
                             mb_substr($feed['nome'], 0, 60),
@@ -159,7 +164,14 @@ class FeedImporter
                 $vistos[$item['link']] = true;
                 $novos[$tipo]++;
                 $feedsInfo[$idx]['aceitos']++;
-                $aceitas[] = sprintf('[%s] %d pts | %s (%s)', $tipo, $pontos, mb_substr($titulo, 0, 90), $feed['nome']);
+                $aceitas[] = sprintf(
+                    '[%s] %d pts%s | %s (%s)',
+                    $tipo,
+                    $pontos,
+                    $item['imagem'] !== null ? ' +foto' : '',
+                    mb_substr($titulo, 0, 90),
+                    $feed['nome']
+                );
             }
         }
 
@@ -204,7 +216,7 @@ class FeedImporter
         return $corpo === false ? null : $corpo;
     }
 
-    /** @return array<int, array{titulo:string, link:string, resumo:string, data:string}> */
+    /** @return array<int, array{titulo:string, link:string, resumo:string, data:string, imagem:?string}> */
     private static function lerItens(string $xmlTexto): array
     {
         libxml_use_internal_errors(true);
@@ -222,6 +234,7 @@ class FeedImporter
                     'link' => trim((string) $i->link),
                     'resumo' => (string) $i->description,
                     'data' => (string) $i->pubDate,
+                    'imagem' => self::imagemDoItem($i),
                 ];
             }
         } elseif (isset($xml->entry)) { // Atom
@@ -231,11 +244,72 @@ class FeedImporter
                     'link' => trim((string) $e->link['href']),
                     'resumo' => (string) ($e->summary ?: $e->content),
                     'data' => (string) ($e->updated ?: $e->published),
+                    'imagem' => self::imagemDoItem($e),
                 ];
             }
         }
 
         return $itens;
+    }
+
+    /** Procura a foto da matéria: enclosure, Media RSS ou a primeira <img> do conteúdo. */
+    private static function imagemDoItem(\SimpleXMLElement $item): ?string
+    {
+        $candidatas = [];
+
+        // RSS: <enclosure url="..." type="image/jpeg">
+        foreach ($item->enclosure as $enc) {
+            if (stripos((string) $enc['type'], 'image/') === 0) {
+                $candidatas[] = (string) $enc['url'];
+            }
+        }
+        // Atom: <link rel="enclosure" type="image/..." href="...">
+        foreach ($item->link as $l) {
+            if ((string) $l['rel'] === 'enclosure' && stripos((string) $l['type'], 'image/') === 0) {
+                $candidatas[] = (string) $l['href'];
+            }
+        }
+
+        // Media RSS: <media:content> e <media:thumbnail>
+        $media = $item->children('http://search.yahoo.com/mrss/');
+        foreach ($media->content as $m) {
+            $url = (string) $m['url'];
+            if ((string) $m['medium'] === 'image'
+                || stripos((string) $m['type'], 'image/') === 0
+                || preg_match('/\.(jpe?g|png|webp)(\?|$)/i', $url)) {
+                $candidatas[] = $url;
+            }
+        }
+        foreach ($media->thumbnail as $t) {
+            $candidatas[] = (string) $t['url'];
+        }
+
+        // Primeira <img> do conteúdo completo ou do resumo
+        $conteudo = $item->children('http://purl.org/rss/1.0/modules/content/');
+        $trechos = [(string) $conteudo->encoded, (string) $item->description, (string) $item->content, (string) $item->summary];
+        foreach ($trechos as $html) {
+            if ($html !== '' && preg_match('/<img[^>]+src=["\']([^"\']+)["\']/i', $html, $m)) {
+                $candidatas[] = html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            }
+        }
+
+        foreach ($candidatas as $url) {
+            $url = trim($url);
+            if (self::imagemValida($url)) {
+                return $url;
+            }
+        }
+
+        return null;
+    }
+
+    /** Aceita só http/https de até 255 caracteres e descarta pixels de rastreio, avatares e GIFs. */
+    private static function imagemValida(string $url): bool
+    {
+        return $url !== ''
+            && strlen($url) <= 255
+            && preg_match('#^https?://#i', $url) === 1
+            && preg_match('/pixel|tracking|feedburner|emoji|gravatar|avatar|spacer|\.gif(\?|$)/i', $url) !== 1;
     }
 
     private static function limpar(string $texto): string

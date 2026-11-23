@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Nexos: fórum educativo sobre diversidade étnico-racial.">
-    <title><?= e($title ?? 'Nexos') ?></title>
+    <meta name="description" content="Raízes: fórum educativo sobre diversidade étnico-racial.">
+    <title><?= e($title ?? 'Raízes') ?></title>
     <link rel="icon" type="image/svg+xml" href="<?= asset('assets/favicon.svg') ?>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,7 +14,8 @@
     <link rel="stylesheet" href="<?= asset('css/style.css') ?>">
     <link rel="stylesheet" href="<?= asset('css/estilo.css') ?>">
 </head>
-<body<?= !empty($homePage) ? ' data-bs-spy="scroll" data-bs-target="#menuPrincipal" data-bs-offset="100" tabindex="0"' : '' ?>>
+<?php if (session_status() === PHP_SESSION_NONE) session_start(); ?>
+<body data-role="<?= e($_SESSION['user']['role'] ?? '') ?>"<?= !empty($homePage) ? ' data-bs-spy="scroll" data-bs-target="#menuPrincipal" data-bs-offset="100" tabindex="0"' : '' ?>>
 <?= $content ?>
 <script src="<?= asset('js/bootstrap.bundle.min.js') ?>" defer></script>
 <script src="<?= asset('js/app.js') ?>" defer></script>

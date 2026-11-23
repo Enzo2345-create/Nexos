@@ -8,6 +8,16 @@ class HomeController
 {
     public function index(): void
     {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $csrfToken = $_SESSION['csrf'] ??= bin2hex(random_bytes(32));
+        $userPoints = 0;
+        if (!empty($_SESSION['user']['id'])) {
+            try {
+                $stmt = \App\Models\Database::connect()->prepare('SELECT COALESCE(SUM(pontos),0) FROM Pontuacao WHERE id_usuario=?');
+                $stmt->execute([(int)$_SESSION['user']['id']]);
+                $userPoints = (int)$stmt->fetchColumn();
+            } catch (\PDOException $e) { /* migrations may not have been applied yet */ }
+        }
         $dados = [
             'categorias' => [],
             'artigos' => [],
@@ -32,7 +42,9 @@ class HomeController
         }
 
         $this->render('home/index', $dados + [
-            'title' => 'Nexos | Fórum de Discussão sobre Diversidade Étnico-Racial',
+            'csrfToken' => $csrfToken,
+            'userPoints' => $userPoints,
+            'title' => 'Raízes | Fórum de Discussão sobre Diversidade Étnico-Racial',
             'pageScript' => 'js/script.js',
             'homePage' => true,
         ]);

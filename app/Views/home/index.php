@@ -20,10 +20,9 @@
           <li class="nav-item"><a class="nav-link" href="#noticias">Notícias</a></li>
           <li class="nav-item"><a class="nav-link" href="#comunidade">Comunidade</a></li>
           <li class="nav-item"><a class="nav-link" href="#glossario">Glossário</a></li>
-          <li class="nav-item"><a class="nav-link" href="<?= url('user/index') ?>">Usuários</a></li>
         </ul>
         <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0">
-          <span class="points-pill" title="Seus pontos"><i class="bi bi-star-fill"></i> <span class="js-meus-pontos">0</span> pts</span>
+          <span class="points-pill" title="Seus pontos"><i class="bi bi-star-fill"></i> <span class="js-meus-pontos"><?= (int)($userPoints ?? 0) ?></span> pts</span>
           <?php if (session_status() === PHP_SESSION_NONE) session_start(); ?>
           <?php $csrfToken = $_SESSION['csrf'] ??= bin2hex(random_bytes(32)); ?>
           <?php if (!empty($_SESSION['user'])): ?>
@@ -39,6 +38,9 @@
               </button>
               <div class="dropdown-menu dropdown-menu-end account-dropdown p-3">
                 <div class="fw-semibold mb-2">Sua conta</div>
+                <div class="small text-soft mb-2">@<?= e($_SESSION['user']['username'] ?? '') ?></div>
+                <a class="btn btn-raizes-outline btn-sm w-100 mb-2" href="<?= url('auth/profile') ?>"><i class="bi bi-person me-1"></i>Ver e editar perfil</a>
+                <?php if (($_SESSION['user']['role'] ?? '') === 'administrador'): ?><a class="btn btn-raizes btn-sm w-100 mb-2" href="<?= url('admin/index') ?>"><i class="bi bi-gear me-1"></i>Gestão de conteúdo</a><?php endif; ?>
                 <?php if (!empty($_SESSION['photo_error'])): ?>
                   <div class="alert alert-danger py-2 small" role="alert"><?= e($_SESSION['photo_error']) ?></div>
                   <?php unset($_SESSION['photo_error']); ?>
@@ -167,6 +169,7 @@
       <div class="container">
         <div class="section-head reveal">
           <h2 class="section-title">Artigos</h2>
+          <label class="visually-hidden" for="buscaArtigo">Pesquisar artigos</label><input class="form-control" type="search" id="buscaArtigo" placeholder="Buscar por palavra-chave ou autor" style="max-width:310px">
           <div class="d-flex flex-wrap gap-2" id="filtroArtigos">
             <button class="btn-chip active" data-filter="todos">Todos</button>
             <?php foreach ($categorias as $cat): ?>
@@ -183,7 +186,7 @@
 
         <div class="row g-4" id="listaArtigos">
           <?php foreach ($artigos as $a): ?>
-            <div class="col-md-6 col-lg-4 artigo reveal" data-cat="<?= e($a['slug']) ?>">
+            <div class="col-md-6 col-lg-4 artigo reveal" data-cat="<?= e($a['slug']) ?>" data-author="<?= e($a['autor'] ?? 'Equipe Nexos') ?>" data-search="<?= e(strip_tags($a['conteudo'])) ?>">
               <article class="card-raizes">
                 <?php if (!empty($a['imagem'])): ?>
                   <?php if (!empty($a['link'])): /* foto de um site externo: se não carregar, volta ao cartão com ícone */ ?>
@@ -202,7 +205,7 @@
                     <p class="small text-soft mb-2">Fonte: <?= e($a['fonte']) ?></p>
                     <a class="btn-read" style="text-decoration:none" href="<?= e($a['link']) ?>" target="_blank" rel="noopener noreferrer">Ler em <?= e($a['fonte']) ?> <i class="bi bi-box-arrow-up-right"></i></a>
                   <?php else: ?>
-                    <button class="btn-read" data-artigo="artigo-<?= (int) $a['id_artigo'] ?>">Ler artigo <i class="bi bi-arrow-right"></i></button>
+                    <button class="btn-read" data-artigo="artigo-<?= (int) $a['id_artigo'] ?>" data-artigo-id="<?= (int)$a['id_artigo'] ?>">Ler artigo <i class="bi bi-arrow-right"></i></button>
                   <?php endif; ?>
                 </div>
               </article>
@@ -214,7 +217,7 @@
         <div class="d-none">
           <?php foreach ($artigos as $a): ?>
             <?php if (!empty($a['link'])) { continue; } /* artigos externos abrem o site de origem */ ?>
-            <div id="artigo-<?= (int) $a['id_artigo'] ?>"
+            <div id="artigo-<?= (int) $a['id_artigo'] ?>" data-id="<?= (int)$a['id_artigo'] ?>"
                  data-titulo="<?= e($a['titulo']) ?>"
                  <?php if (!empty($a['imagem'])): ?>data-img="<?= asset($a['imagem']) ?>"<?php endif; ?>
                  data-cat="<?= e($a['categoria']) ?>"><?= $a['conteudo'] /* HTML escrito pela equipe e guardado no banco */ ?></div>
@@ -235,7 +238,7 @@
         <?php endif; ?>
         <div class="row g-4 g-lg-5">
           <?php if ($noticiaDestaque): ?>
-            <div class="col-lg-6 reveal">
+            <div class="col-lg-6 reveal news-featured-wrap" data-search-content data-author="<?= e($noticiaDestaque['rotulo'] ?? '') ?>">
               <a href="<?= e($noticiaDestaque['link'] ?: '#comunidade') ?>" class="news-featured"<?= $noticiaDestaque['link'] ? ' target="_blank" rel="noopener"' : '' ?>>
                 <?php if (!empty($noticiaDestaque['imagem'])): ?>
                   <img src="<?= asset($noticiaDestaque['imagem']) ?>" alt="" loading="lazy" width="1024" height="768">
@@ -252,7 +255,7 @@
           <div class="col-lg-6 reveal">
             <?php foreach ($noticias as $n): ?>
               <?php [$dia, $mes] = dia_mes($n['data_publicacao']); ?>
-              <div class="news-item">
+              <div class="news-item" data-search-content data-author="<?= e($n['rotulo']) ?>">
                 <div class="news-date"><strong><?= e($dia) ?></strong><span><?= e($mes) ?></span></div>
                 <div>
                   <span class="badge-cat <?= e($n['classe_badge']) ?>"><?= e($n['rotulo']) ?></span>
@@ -294,7 +297,7 @@
                   <option value="imigracao">Imigração</option>
                 </select>
               </div>
-              <div id="listaTopicos"><!-- preenchido pelo jv/script.js --></div>
+              <div id="listaTopicos" data-api="<?= e(url('community')) ?>" data-profile-url="<?= e(url('auth/view')) ?>" data-csrf="<?= e($csrfToken) ?>" data-user-id="<?= (int)($_SESSION['user']['id'] ?? 0) ?>"><!-- tópicos do banco -->
               <p class="text-center text-soft p-4 mb-0 d-none" id="semTopicos">Nenhuma discussão encontrada.</p>
             </div>
           </div>
@@ -326,7 +329,7 @@
         <div class="quiz-box reveal">
           <div class="row g-4 g-lg-5 align-items-center">
             <div class="col-lg-5">
-              <span class="kicker kicker-gold mb-3">Desafio · 4 perguntas</span>
+              <span class="kicker kicker-gold mb-3">Quiz educativo</span>
               <h2 class="mb-3">Quanto você sabe sobre a história étnico-racial do Brasil?</h2>
               <p class="opacity-75 mb-0">Leis, datas e conceitos. Cada resposta certa vale <strong class="text-gold">10 pontos</strong> no ranking.</p>
             </div>
@@ -458,6 +461,18 @@
           <h2 class="h3 mb-3" id="modalArtigoTitulo"></h2>
           <img src="" alt="" class="modal-article-img mb-4 d-none" id="modalArtigoImg">
           <div class="text-soft" id="modalArtigoTexto"></div>
+          <div class="border-top mt-4 pt-4" id="painelResenhas" data-api="<?= e(url('community')) ?>" data-profile-url="<?= e(url('auth/view')) ?>" data-csrf="<?= e($csrfToken) ?>" data-user-id="<?= (int)($_SESSION['user']['id'] ?? 0) ?>" data-role="<?= e($_SESSION['user']['role'] ?? '') ?>">
+            <h3 class="h5">Resenhas da comunidade</h3>
+            <div id="listaResenhas" class="d-grid gap-3 mb-3"></div>
+            <?php if (!empty($_SESSION['user']['id'])): ?>
+            <form id="formResenha" class="d-grid gap-2">
+              <input type="hidden" name="csrf" value="<?= e($csrfToken) ?>"><input type="hidden" name="article_id" id="resenhaArtigoId">
+              <label for="textoResenha" class="form-label fw-semibold">Escreva uma resenha (20 a 5000 caracteres)</label>
+              <textarea class="form-control" name="text" id="textoResenha" rows="3" minlength="20" maxlength="5000" required></textarea>
+              <button class="btn btn-raizes btn-sm" type="submit">Publicar resenha</button>
+            </form>
+            <?php else: ?><p class="small text-soft mb-0">Entre na sua conta para publicar e avaliar resenhas.</p><?php endif; ?>
+          </div>
         </div>
         <div class="modal-footer border-0">
           <a href="#comunidade" class="btn btn-raizes" data-bs-dismiss="modal">Debater no fórum</a>
@@ -469,7 +484,8 @@
   <!-- Novo tópico -->
   <div class="modal fade" id="modalTopico" tabindex="-1" aria-labelledby="modalTopicoTitulo" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-      <form class="modal-content" id="formTopico" novalidate>
+      <form class="modal-content" id="formTopico" novalidate data-api="<?= e(url('community')) ?>">
+        <input type="hidden" name="csrf" value="<?= e($csrfToken) ?>">
         <div class="modal-header border-0">
           <h2 class="modal-title h3" id="modalTopicoTitulo">Nova discussão</h2>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
@@ -477,8 +493,8 @@
         <div class="modal-body">
           <div class="mb-3">
             <label for="topicoNome" class="form-label fw-semibold">Seu nome</label>
-            <input type="text" class="form-control" id="topicoNome" required maxlength="40" placeholder="Ex.: Ana Souza">
-            <div class="invalid-feedback">Informe seu nome.</div>
+            <input type="text" class="form-control" id="topicoNome" value="<?= e($_SESSION['user']['name'] ?? '') ?>" readonly required maxlength="150" placeholder="Entre na sua conta para publicar">
+            <div class="invalid-feedback">Entre na sua conta para publicar.</div>
           </div>
           <div class="mb-3">
             <label for="topicoTitulo" class="form-label fw-semibold">Título</label>
@@ -525,10 +541,6 @@
           <div class="mb-3">
             <label for="entrarSenha" class="form-label fw-semibold">Senha</label>
             <input type="password" class="form-control" id="entrarSenha" name="password" autocomplete="current-password" required>
-          </div>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="entrarProfessor">
-            <label class="form-check-label" for="entrarProfessor">Sou professor(a)</label>
           </div>
         </div>
         <div class="modal-footer border-0">

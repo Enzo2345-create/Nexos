@@ -1,3 +1,10 @@
+/* =========================================================
+   RAÍZES — Fórum de Discussão sobre Diversidade Étnico-Racial
+   Identidade visual: revista editorial, tons de terra,
+   bordas firmes e sombras sólidas.
+   (carregado depois do Bootstrap)
+   ========================================================= */
+
 :root {
   /* Paleta */
   --rz-cream: #faf1e6;        /* fundo */

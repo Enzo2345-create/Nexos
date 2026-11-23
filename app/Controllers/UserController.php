@@ -6,12 +6,14 @@ use App\Validators\UserValidator;
 
 class UserController {
     public function index(): void {
+        $this->requireAdmin();
         $this->render('users/index', [
             'title' => 'Usuários',
             'users' => User::all(),
         ]);
     }
     public function show(string $id = ''): void {
+    $this->requireAdmin();
     $user = User::find((int) $id);
 
     if (!$user) {
@@ -25,6 +27,7 @@ class UserController {
         ]);
     }
     public function create(): void {
+        $this->requireAdmin();
         $this->render('users/form', [
             'title' => 'Novo usuário',
             'errors' => [],
@@ -33,6 +36,7 @@ class UserController {
         ]);
     }
     public function store(): void {
+        $this->requireAdmin();
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             http_response_code(405);
             exit('Método não permitido');
@@ -68,6 +72,10 @@ class UserController {
     private function csrfToken(): string {
         session_status() === PHP_SESSION_NONE && session_start();
         return $_SESSION['csrf'] ??= bin2hex(random_bytes(32));
+    }
+    private function requireAdmin(): void {
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        if (($_SESSION['user']['role'] ?? '') !== 'administrador') { http_response_code(403); exit('Área exclusiva para administradores.'); }
     }
     private function checkCsrf(): void {
         session_status() === PHP_SESSION_NONE && session_start();

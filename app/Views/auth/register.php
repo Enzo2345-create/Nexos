@@ -1,14 +1,19 @@
 <main class="container py-5" style="min-height: 75vh">
     <div class="forum-card p-4 p-md-5 mx-auto" style="max-width: 560px">
-        <span class="kicker">Comunidade Nexos</span>
+        <span class="kicker">Comunidade Raízes</span>
         <h1 class="section-title mb-4">Criar conta</h1>
         <?php if (isset($errors['duplicate'])): ?><div class="alert alert-danger" role="alert"><?= e($errors['duplicate']) ?></div><?php endif; ?>
-        <form method="post" action="<?= url('auth/register') ?>">
+        <form method="post" action="<?= url('auth/register') ?>" enctype="multipart/form-data">
             <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
             <div class="mb-3">
                 <label class="form-label fw-semibold" for="name">Nome completo</label>
                 <input class="form-control" type="text" id="name" name="name" maxlength="150" autocomplete="name" value="<?= e($old['name']) ?>" required>
                 <?php if (isset($errors['name'])): ?><div class="text-danger small mt-1"><?= e($errors['name']) ?></div><?php endif; ?>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold" for="username">Nome de usuário</label>
+                <input class="form-control" type="text" id="username" name="username" minlength="3" maxlength="40" pattern="[A-Za-z0-9_.-]+" autocomplete="username" value="<?= e($old['username'] ?? '') ?>" required>
+                <?php if (isset($errors['username'])): ?><div class="text-danger small mt-1"><?= e($errors['username']) ?></div><?php endif; ?>
             </div>
             <div class="mb-3">
                 <label class="form-label fw-semibold" for="email">E-mail</label>
@@ -24,6 +29,11 @@
                 <label class="form-label fw-semibold" for="birth_date">Data de nascimento</label>
                 <input class="form-control" type="date" id="birth_date" name="birth_date" autocomplete="bday" value="<?= e($old['birth_date']) ?>" required>
                 <?php if (isset($errors['birth_date'])): ?><div class="text-danger small mt-1"><?= e($errors['birth_date']) ?></div><?php endif; ?>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold" for="photo">Foto de perfil (opcional)</label>
+                <input class="form-control" type="file" id="photo" name="photo" accept="image/jpeg,image/png,image/webp">
+                <div class="form-text">JPG, PNG ou WEBP, até 3 MB.</div>
             </div>
             <div class="mb-3">
                 <label class="form-label fw-semibold" for="password">Senha</label>

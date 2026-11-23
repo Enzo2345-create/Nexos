@@ -24,9 +24,12 @@ class Conteudo
 
         $pdo = Database::connect();
         $base = 'SELECT a.id_artigo, a.titulo, a.resumo, a.conteudo, a.imagem, a.imagem_alt, a.icone,
-                        a.link, a.fonte, c.slug, c.nome AS categoria
+                        a.link, a.fonte, c.slug, c.nome AS categoria,
+                        COALESCE(p.nome_pessoa, a.fonte, \'Equipe Nexos\') AS autor
                  FROM artigo a
                  INNER JOIN categoria c ON c.id_categoria = a.id_categoria
+                 LEFT JOIN Administrador ad ON ad.id_pessoa=a.id_admin
+                 LEFT JOIN Pessoa p ON p.id_pessoa=ad.id_pessoa
                  WHERE a.publicado = 1 ';
 
         $stmt = $pdo->prepare(

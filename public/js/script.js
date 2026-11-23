@@ -39,11 +39,10 @@
   }
 
   /* ---------- Pontos (gamificação) ---------- */
-  let meusPontos = store.get("pontos", 0);
+  let meusPontos = Number($(".js-meus-pontos")?.textContent || 0);
   function atualizarPontos(ganho, motivo) {
     if (ganho) {
       meusPontos += ganho;
-      store.set("pontos", meusPontos);
       aviso(`+${ganho} pontos! ${motivo || ""}`.trim());
     }
     $$(".js-meus-pontos").forEach((el) => (el.textContent = meusPontos));
@@ -51,16 +50,16 @@
   }
 
   /* ---------- Fórum ---------- */
-  const TOPICOS_INICIAIS = [
-    { id: 1, autor: "Marina Santos", titulo: "Como responder quando alguém diz que “racismo é mimimi”?", texto: "Ouvi isso no grupo da turma e fiquei sem saber o que dizer. Quais argumentos e dados vocês usariam?", cat: "educacao", respostas: 14, curtidas: 32, quando: "há 2 horas" },
-    { id: 2, autor: "Prof. Carlos Lima", titulo: "Sugestões de livros de autores negros para o Ensino Médio", texto: "Estou montando uma lista para o clube de leitura. Quem tiver indicações, compartilhe aqui!", cat: "educacao", respostas: 21, curtidas: 45, quando: "há 5 horas" },
-    { id: 3, autor: "Yara Pataxó", titulo: "Povos indígenas não são “coisa do passado”", texto: "Quero conversar sobre como os livros didáticos ainda mostram os indígenas só no período colonial.", cat: "indigena", respostas: 9, curtidas: 27, quando: "ontem" },
-    { id: 4, autor: "Lucas Oliveira", titulo: "O que a abolição de 1888 deixou de fazer?", texto: "Estudando para a prova percebi que não houve nenhuma reparação. Que consequências isso tem hoje?", cat: "historia", respostas: 7, curtidas: 18, quando: "há 2 dias" },
-    { id: 5, autor: "Daniela Rojas", titulo: "Sou venezuelana e quero contar minha experiência na escola", texto: "Cheguei ao Brasil há dois anos. Algumas coisas foram difíceis, outras muito acolhedoras.", cat: "imigracao", respostas: 12, curtidas: 39, quando: "há 3 dias" },
-  ];
-
-  let topicos = store.get("topicos", TOPICOS_INICIAIS);
-  let curtidos = store.get("curtidos", []);
+  let topicos = [];
+  const forum = $("#listaTopicos"), api = forum.dataset.api, csrf = forum.dataset.csrf, userId = Number(forum.dataset.userId || 0);
+  async function request(path, data) {
+    const res = await fetch(path, data ? {method:"POST",body:new URLSearchParams(data)} : {});
+    const body = await res.json(); if (!res.ok) throw new Error(body.error || "A operação não foi concluída."); return body;
+  }
+  async function carregarTopicos() {
+    try { topicos=await request(api+"/index"); renderTopicos(); }
+    catch(err) { forum.innerHTML=`<p class="p-4 text-soft">${escapeHTML(err.message)} Aplique database/requisitos.sql para ativar o fórum.</p>`; }
+  }
 
   function renderTopicos() {
     const busca = $("#buscaTopico").value.trim().toLowerCase();
@@ -71,7 +70,6 @@
     );
 
     $("#listaTopicos").innerHTML = lista.map((t, i) => {
-      const curtido = curtidos.includes(t.id);
       return `
         <div class="topic">
           <div class="avatar av-${(i % 4) + 1}" aria-hidden="true">${escapeHTML(iniciais(t.autor))}</div>
@@ -80,12 +78,12 @@
             <h4 class="mt-2">${escapeHTML(t.titulo)}</h4>
             <p class="text-soft small mb-2">${escapeHTML(t.texto)}</p>
             <div class="topic-meta d-flex flex-wrap gap-3 align-items-center">
-              <span><i class="bi bi-person"></i> ${escapeHTML(t.autor)}</span>
+              <span><i class="bi bi-person"></i> <a href="${forum.dataset.profileUrl}/${t.autorId}">${escapeHTML(t.autor)}</a></span>
               <span><i class="bi bi-clock"></i> ${escapeHTML(t.quando)}</span>
-              <button class="btn-like ${curtido ? "liked" : ""}" data-curtir="${t.id}" aria-pressed="${curtido}">
-                <i class="bi ${curtido ? "bi-heart-fill" : "bi-heart"}"></i> ${t.curtidas}
-              </button>
+              <button class="btn btn-sm btn-raizes-outline" data-responder="${t.id}"><i class="bi bi-chat"></i> Ver e responder (${t.respostas})</button>
+              ${userId === t.autorId ? `<button class="btn btn-sm btn-raizes-outline" data-editar="${t.id}">Editar</button><button class="btn btn-sm btn-outline-danger" data-remover="${t.id}">Remover</button>` : (document.body.dataset.role === "administrador" ? `<button class="btn btn-sm btn-outline-danger" data-remover="${t.id}">Moderar</button>` : "")}
             </div>
+            <div class="topic-replies d-none mt-3" data-replies="${t.id}"><div class="d-grid gap-2" data-reply-list></div>${userId?`<form class="mt-3 d-grid gap-2" data-reply-form="${t.id}"><input type="hidden" name="csrf" value="${csrf}"><label class="visually-hidden" for="reply-${t.id}">Sua resposta</label><textarea class="form-control" id="reply-${t.id}" name="message" rows="2" maxlength="3000" required placeholder="Escreva uma resposta respeitosa"></textarea><button class="btn btn-raizes btn-sm justify-self-start" type="submit">Responder</button></form>`:`<p class="small text-soft mb-0">Entre para responder.</p>`}</div>
           </div>
           <div class="topic-stats d-none d-sm-block"><strong>${t.respostas}</strong>respostas</div>
         </div>`;
@@ -108,22 +106,17 @@
       </article>`).join("");
   }
 
-  $("#listaTopicos").addEventListener("click", (e) => {
-    const botao = e.target.closest("[data-curtir]");
-    if (!botao) return;
-    const id = Number(botao.dataset.curtir);
-    const topico = topicos.find((t) => t.id === id);
-    if (curtidos.includes(id)) {
-      curtidos = curtidos.filter((c) => c !== id);
-      topico.curtidas--;
-    } else {
-      curtidos.push(id);
-      topico.curtidas++;
-    }
-    store.set("curtidos", curtidos);
-    store.set("topicos", topicos);
-    renderTopicos();
+  $("#listaTopicos").addEventListener("click", async (e) => {
+    const reply=e.target.closest("[data-responder]"), remove=e.target.closest("[data-remover]"), edit=e.target.closest("[data-editar]");
+    try {
+      if(remove) { if(confirm(document.body.dataset.role==="administrador"?"Remover esta discussão pela moderação?":"Remover sua discussão?")){await request(`${api}/removeTopic/${remove.dataset.remover}`,{csrf}); await carregarTopicos();} return; }
+      if(edit) { const t=topicos.find(x=>x.id===Number(edit.dataset.editar));const title=prompt("Editar título:",t.titulo);if(title===null)return;const message=prompt("Editar mensagem:",t.texto);if(message===null)return;await request(`${api}/updateTopic/${t.id}`,{csrf,title,message});await carregarTopicos();return; }
+      if(reply) { const id=reply.dataset.responder,panel=forum.querySelector(`[data-replies="${id}"]`);panel.classList.toggle("d-none");if(!panel.classList.contains("d-none")){const rows=await request(`${api}/replies/${id}`);panel.querySelector('[data-reply-list]').innerHTML=rows.map(r=>`<article class="border-start border-3 ps-3 py-1"><div class="small"><a href="${forum.dataset.profileUrl}/${r.id_usuario}">${escapeHTML(r.nome_pessoa)}</a> · ${escapeHTML(r.criado_em)}</div><p class="mb-1">${escapeHTML(r.mensagem)}</p>${userId===Number(r.id_usuario)||document.body.dataset.role==="administrador"?`${userId===Number(r.id_usuario)?`<button class="btn btn-sm btn-link p-0 me-2" data-editar-resposta="${r.id_resposta}" data-message="${encodeURIComponent(r.mensagem)}">Editar</button>`:""}<button class="btn btn-sm btn-link text-danger p-0" data-remover-resposta="${r.id_resposta}">Excluir</button>`:""}</article>`).join('')||'<p class="small text-soft">Ainda não há respostas.</p>'; } }
+      const editReply=e.target.closest('[data-editar-resposta]');if(editReply){const message=prompt('Edite sua resposta:',decodeURIComponent(editReply.dataset.message));if(message===null)return;await request(`${api}/updateReply/${editReply.dataset.editarResposta}`,{csrf,message});await carregarTopicos();return;}
+      const removeReply=e.target.closest('[data-remover-resposta]');if(removeReply&&confirm('Excluir esta resposta?')){await request(`${api}/removeReply/${removeReply.dataset.removerResposta}`,{csrf});removeReply.closest('article').remove();}
+    } catch(err){aviso(err.message);}
   });
+  forum.addEventListener('submit',async e=>{const form=e.target.closest('[data-reply-form]');if(!form)return;e.preventDefault();try{await request(`${api}/reply/${form.dataset.replyForm}`,Object.fromEntries(new FormData(form)));await carregarTopicos();}catch(err){aviso(err.message);}});
 
   $("#buscaTopico").addEventListener("input", renderTopicos);
   $("#filtroTopico").addEventListener("change", renderTopicos);
@@ -132,50 +125,23 @@
     e.preventDefault();
     const form = e.currentTarget;
     if (!form.checkValidity()) { form.classList.add("was-validated"); return; }
-    topicos.unshift({
-      id: Date.now(),
-      autor: $("#topicoNome").value.trim(),
-      titulo: $("#topicoTitulo").value.trim(),
-      texto: $("#topicoTexto").value.trim(),
-      cat: $("#topicoCategoria").value,
-      respostas: 0,
-      curtidas: 0,
-      quando: "agora",
-    });
-    store.set("topicos", topicos);
-    store.set("nome", $("#topicoNome").value.trim());
-    form.reset();
-    form.classList.remove("was-validated");
-    bootstrap.Modal.getInstance($("#modalTopico")).hide();
-    $("#filtroTopico").value = "todos";
-    $("#buscaTopico").value = "";
-    renderTopicos();
-    atualizarPontos(20, "Discussão publicada.");
+    if(!userId){aviso("Entre na sua conta para publicar.");return;}
+    request(`${api}/create`,{csrf,title:$("#topicoTitulo").value.trim(),message:$("#topicoTexto").value.trim(),category:$("#topicoCategoria").value}).then(()=>{form.reset();form.classList.remove("was-validated");bootstrap.Modal.getInstance($("#modalTopico")).hide();$("#filtroTopico").value="todos";$("#buscaTopico").value="";carregarTopicos();atualizarPontos(20,"Discussão publicada.");}).catch(err=>aviso(err.message));
   });
 
   $("#modalTopico").addEventListener("show.bs.modal", () => {
-    const nome = store.get("nome", "");
-    if (nome) $("#topicoNome").value = nome;
+    if(!userId) aviso("Entre para participar do fórum.");
   });
 
   /* ---------- Ranking ---------- */
   function renderRanking() {
-    const nome = store.get("nome", "");
-    const pessoas = [
-      { nome: "Marina Santos", pontos: 340 },
-      { nome: "Yara Pataxó", pontos: 295 },
-      { nome: "Prof. Carlos Lima", pontos: 260 },
-      { nome: "Daniela Rojas", pontos: 180 },
-      { nome: nome ? nome + " (você)" : "Você", pontos: meusPontos, eu: true },
-    ].sort((a, b) => b.pontos - a.pontos);
-
-    $("#ranking").innerHTML = pessoas.map((p, i) => `
+    request(api + "/ranking").then(pessoas => { $("#ranking").innerHTML = pessoas.map((p, i) => `
       <div class="rank-item ${p.eu ? "fw-semibold" : ""}">
         <span class="rank-pos">${i + 1}</span>
-        <div class="avatar av-${(i % 4) + 1}" style="flex-basis:36px;width:36px;height:36px;font-size:.8rem">${escapeHTML(iniciais(p.nome))}</div>
-        <span class="flex-grow-1 small">${escapeHTML(p.nome)}</span>
+        <div class="avatar av-${(i % 4) + 1}" style="flex-basis:36px;width:36px;height:36px;font-size:.8rem">${escapeHTML(iniciais(p.nome_pessoa))}</div>
+        <span class="flex-grow-1 small">${escapeHTML(p.nome_pessoa)}</span>
         <span class="points-pill">${p.pontos}</span>
-      </div>`).join("");
+      </div>`).join("") || '<p class="text-soft small">Participe para aparecer no ranking semanal.</p>'; }).catch(()=>{});
   }
 
   /* ---------- Artigos: filtro e leitura ---------- */
@@ -183,11 +149,14 @@
     const chip = e.target.closest("[data-filter]");
     if (!chip) return;
     $$("#filtroArtigos .btn-chip").forEach((b) => b.classList.toggle("active", b === chip));
-    const filtro = chip.dataset.filter;
-    $$("#listaArtigos .artigo").forEach((card) => {
-      card.classList.toggle("d-none", filtro !== "todos" && card.dataset.cat !== filtro);
-    });
+    filtrarArtigos();
   });
+  function filtrarArtigos() {
+    const filter=$("#filtroArtigos .btn-chip.active")?.dataset.filter||"todos", q=$("#buscaArtigo")?.value.trim().toLocaleLowerCase('pt-BR')||"";
+    $$("#listaArtigos .artigo").forEach(card=>card.classList.toggle("d-none",(filter!=="todos"&&card.dataset.cat!==filter)||!(`${card.textContent} ${card.dataset.author} ${card.dataset.search}`.toLocaleLowerCase('pt-BR').includes(q))));
+    $$('[data-search-content]').forEach(card=>card.classList.toggle("d-none",!(`${card.textContent} ${card.dataset.author}`.toLocaleLowerCase('pt-BR').includes(q))));
+  }
+  $("#buscaArtigo")?.addEventListener("input", filtrarArtigos);
 
   const lidos = new Set(store.get("lidos", []));
   $$("[data-artigo]").forEach((botao) => {
@@ -200,22 +169,40 @@
       if (fonte.dataset.img) { img.src = fonte.dataset.img; img.alt = fonte.dataset.titulo; img.classList.remove("d-none"); }
       else { img.classList.add("d-none"); img.removeAttribute("src"); }
       bootstrap.Modal.getOrCreateInstance($("#modalArtigo")).show();
+      const panel=$("#painelResenhas");
+      if(panel && fonte.dataset.id){
+        $("#resenhaArtigoId").value=fonte.dataset.id;
+        carregarResenhas(fonte.dataset.id);
+      }
       if (!lidos.has(fonte.id)) {
         lidos.add(fonte.id);
         store.set("lidos", Array.from(lidos));
-        setTimeout(() => atualizarPontos(5, "Artigo lido."), 400);
+        if(userId && fonte.dataset.id) request(`${api}/readArticle/${fonte.dataset.id}`,{csrf}).then(r=>{meusPontos=r.points;atualizarPontos(0);}).catch(()=>{});
+        setTimeout(() => {if(userId)aviso("Leitura registrada.");}, 400);
       }
     });
   });
 
+  async function carregarResenhas(id) {
+    try {
+      const rows=await request(`${$("#painelResenhas").dataset.api}/reviews/${id}`);
+      const panel=$("#painelResenhas"), me=Number(panel.dataset.userId), admin=panel.dataset.role==="administrador";
+      $("#listaResenhas").innerHTML=rows.map(r=>`<article class="p-3 rounded border"><div class="d-flex justify-content-between gap-2"><strong><a href="${panel.dataset.profileUrl}/${r.id_usuario}">${escapeHTML(r.nome_pessoa)}</a></strong><span aria-label="Média ${Number(r.media).toFixed(1)} de 5">${"★".repeat(Math.round(r.media))}${"☆".repeat(5-Math.round(r.media))} <small>${Number(r.media).toFixed(1)} (${r.votos})</small></span></div><p class="mb-2 mt-2">${escapeHTML(r.texto)}</p><div class="d-flex align-items-center gap-2"><label class="small" for="nota-${r.id_resenha}">Sua nota:</label><select class="form-select form-select-sm" style="width:auto" id="nota-${r.id_resenha}" data-nota="${r.id_resenha}" aria-label="Avalie de 1 a 5 estrelas"><option value="">Escolha</option>${[1,2,3,4,5].map(n=>`<option value="${n}">${n} estrela${n===1?"":"s"}</option>`).join("")}</select>${me===Number(r.id_usuario)||admin?`${me===Number(r.id_usuario)?`<button class="btn btn-sm btn-raizes-outline" data-editar-resenha="${r.id_resenha}" data-texto="${encodeURIComponent(r.texto)}">Editar</button>`:""}<button class="btn btn-sm btn-outline-danger" data-apagar-resenha="${r.id_resenha}">Excluir</button>`:""}</div></article>`).join("") || '<p class="small text-soft">Ainda não há resenhas para este artigo.</p>';
+    } catch(err) { $("#listaResenhas").innerHTML=`<p class="small text-soft">${escapeHTML(err.message)}</p>`; }
+  }
+  $("#listaResenhas")?.addEventListener("change", async e=>{const s=e.target.closest("[data-nota]");if(!s||!s.value)return;try{await request(`${$("#painelResenhas").dataset.api}/rate`,{csrf:$("#painelResenhas").dataset.csrf,review_id:s.dataset.nota,rating:s.value});aviso("Avaliação salva.");}catch(err){aviso(err.message);}});
+  $("#listaResenhas")?.addEventListener("click",async e=>{const b=e.target.closest("[data-apagar-resenha]");if(!b||!confirm("Excluir esta resenha?"))return;try{await request(`${$("#painelResenhas").dataset.api}/removeReview/${b.dataset.apagarResenha}`,{csrf:$("#painelResenhas").dataset.csrf});carregarResenhas($("#resenhaArtigoId").value);}catch(err){aviso(err.message);}});
+  $("#listaResenhas")?.addEventListener("click",async e=>{const b=e.target.closest("[data-editar-resenha]");if(!b)return;const text=prompt("Edite sua resenha:",decodeURIComponent(b.dataset.texto));if(text===null)return;try{await request(`${$("#painelResenhas").dataset.api}/updateReview/${b.dataset.editarResenha}`,{csrf:$("#painelResenhas").dataset.csrf,text});carregarResenhas($("#resenhaArtigoId").value);}catch(err){aviso(err.message);}});
+  $("#formResenha")?.addEventListener("submit",async e=>{e.preventDefault();try{await request(`${$("#painelResenhas").dataset.api}/review`,Object.fromEntries(new FormData(e.currentTarget)));e.currentTarget.reset();carregarResenhas($("#resenhaArtigoId").value);aviso("Resenha publicada.");}catch(err){aviso(err.message);}});
+
   /* ---------- Desafio (quiz) ---------- */
-  const PERGUNTAS = [
-    { p: "Qual lei tornou obrigatório o ensino de história e cultura afro-brasileira nas escolas?", o: ["Lei nº 8.069/1990", "Lei nº 10.639/2003", "Lei nº 12.711/2012", "Lei nº 9.394/1996"], c: 1 },
-    { p: "Em que ano ocorreu o fim oficial da escravidão no Brasil?", o: ["1822", "1889", "1888", "1850"], c: 2 },
-    { p: "Quais são as categorias de cor ou raça usadas pelo IBGE?", o: ["Branca, negra e indígena", "Branca, preta, parda, amarela e indígena", "Clara, morena e escura", "Europeia, africana e asiática"], c: 1 },
-    { p: "O que é o “mito da democracia racial”?", o: ["A ideia falsa de que no Brasil todas as raças convivem em harmonia e com as mesmas oportunidades", "Uma lei que garante igualdade nas eleições", "Um movimento de valorização da cultura indígena", "Uma teoria que comprova o fim do racismo"], c: 0 },
-  ];
+  let PERGUNTAS = [];
   let atual = 0;
+
+  async function carregarQuiz(){
+    try { PERGUNTAS=await request(api+"/quiz"); if(!PERGUNTAS.length){$("#quizPergunta").textContent="Novas perguntas em breve.";$("#quizOpcoes").innerHTML="";return;} atual=0;renderPergunta(); }
+    catch(err){$("#quizPergunta").textContent="O questionário está indisponível.";$("#quizFeedback").textContent=err.message;}
+  }
 
   function renderPergunta() {
     const q = PERGUNTAS[atual];
@@ -227,22 +214,18 @@
     $("#quizOpcoes").innerHTML = q.o.map((op, i) => `<button class="quiz-option" data-op="${i}">${escapeHTML(op)}</button>`).join("");
   }
 
-  $("#quizOpcoes").addEventListener("click", (e) => {
+  $("#quizOpcoes").addEventListener("click", async (e) => {
     const botao = e.target.closest("[data-op]");
     if (!botao) return;
     const q = PERGUNTAS[atual];
     const escolha = Number(botao.dataset.op);
-    $$("#quizOpcoes .quiz-option").forEach((b, i) => {
-      b.disabled = true;
-      if (i === q.c) b.classList.add("correct");
-    });
-    if (escolha === q.c) {
-      $("#quizFeedback").textContent = "Resposta certa!";
-      atualizarPontos(10, "Resposta certa.");
-    } else {
-      botao.classList.add("wrong");
-      $("#quizFeedback").textContent = "Quase! Veja a resposta correta em verde.";
-    }
+    $$("#quizOpcoes .quiz-option").forEach(b=>b.disabled=true);
+    try {
+      const result=await request(api+"/answer",{csrf,question:q.id,choice:escolha});
+      $$("#quizOpcoes .quiz-option").forEach((b,i)=>{if(i===result.correctChoice)b.classList.add("correct");});
+      if(result.correct){$("#quizFeedback").textContent=userId?"Resposta certa!":"Resposta certa! Entre para registrar seus pontos.";if(userId){meusPontos=result.points;atualizarPontos(0);if(result.earned)aviso("+10 pontos! Resposta certa.");}}
+      else {botao.classList.add("wrong");$("#quizFeedback").textContent="Quase! Veja a resposta correta em verde.";}
+    } catch(err){$("#quizFeedback").textContent=err.message;}
     const botaoProxima = $("#quizProxima");
     botaoProxima.innerHTML = atual < PERGUNTAS.length - 1 ? 'Próxima <i class="bi bi-arrow-right"></i>' : 'Recomeçar <i class="bi bi-arrow-repeat"></i>';
     botaoProxima.classList.remove("d-none");
@@ -293,6 +276,7 @@
 
   /* ---------- Início ---------- */
   renderTopicos();
-  renderPergunta();
+  carregarQuiz();
+  carregarTopicos();
   atualizarPontos(0);
 })();

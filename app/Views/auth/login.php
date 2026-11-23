@@ -1,6 +1,6 @@
 <main class="container py-5" style="min-height: 75vh">
     <div class="forum-card p-4 p-md-5 mx-auto" style="max-width: 480px">
-        <span class="kicker">Comunidade Nexos</span>
+        <span class="kicker">Comunidade Raízes</span>
         <h1 class="section-title mb-4">Entrar</h1>
         <?php if ($error): ?><div class="alert alert-danger" role="alert"><?= e($error) ?></div><?php endif; ?>
         <form method="post" action="<?= url('auth/login') ?>">

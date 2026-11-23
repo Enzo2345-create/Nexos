@@ -36,7 +36,7 @@ class AuthController
         }
 
         $this->render('auth/login', [
-            'title' => 'Entrar | Raízes',
+            'title' => 'Entrar | Nexos',
             'error' => $error,
             'email' => $email ?? '',
             'csrf' => $csrf,
@@ -98,7 +98,7 @@ class AuthController
         }
 
         $this->render('auth/register', [
-            'title' => 'Criar conta | Raízes',
+            'title' => 'Criar conta | Nexos',
             'errors' => $errors,
             'old' => $input,
             'csrf' => $this->csrfToken(),

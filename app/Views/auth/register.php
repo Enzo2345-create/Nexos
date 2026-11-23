@@ -1,6 +1,6 @@
 <main class="container py-5" style="min-height: 75vh">
     <div class="forum-card p-4 p-md-5 mx-auto" style="max-width: 560px">
-        <span class="kicker">Comunidade Raízes</span>
+        <span class="kicker">Comunidade Nexos</span>
         <h1 class="section-title mb-4">Criar conta</h1>
         <?php if (isset($errors['duplicate'])): ?><div class="alert alert-danger" role="alert"><?= e($errors['duplicate']) ?></div><?php endif; ?>
         <form method="post" action="<?= url('auth/register') ?>">

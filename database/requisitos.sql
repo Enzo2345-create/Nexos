@@ -1,6 +1,5 @@
 USE nexos;
 
--- Execute depois de database.sql e database/conteudo.sql.
 ALTER TABLE Pessoa ADD COLUMN nome_usuario VARCHAR(40) NULL AFTER nome_pessoa;
 UPDATE Pessoa SET nome_usuario = CONCAT('nexos', id_pessoa) WHERE nome_usuario IS NULL;
 ALTER TABLE Pessoa MODIFY nome_usuario VARCHAR(40) NOT NULL, ADD UNIQUE KEY uq_pessoa_nome_usuario (nome_usuario);

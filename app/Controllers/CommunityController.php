@@ -21,7 +21,7 @@ class CommunityController
 
     public function ranking(): void
     {
-        $rows=Database::connect()->query('SELECT p.id_usuario,p.nome_pessoa,COALESCE(SUM(pt.pontos),0) AS pontos FROM Pontuacao pt JOIN Pessoa p ON p.id_pessoa=pt.id_usuario WHERE pt.criado_em >= DATE_SUB(CURRENT_DATE, INTERVAL 7 DAY) GROUP BY p.id_usuario ORDER BY pontos DESC LIMIT 10')->fetchAll();
+        $rows=Database::connect()->query('SELECT p.id_pessoa AS id_usuario,p.nome_pessoa,COALESCE(SUM(pt.pontos),0) AS pontos FROM Pontuacao pt JOIN Pessoa p ON p.id_pessoa=pt.id_usuario WHERE pt.criado_em >= DATE_SUB(CURRENT_DATE, INTERVAL 7 DAY) GROUP BY p.id_pessoa ORDER BY pontos DESC LIMIT 10')->fetchAll();
         $this->json($rows);
     }
 

@@ -95,6 +95,10 @@
 
   /* ---------- Capa: "Em debate" (4 tópicos mais recentes) ---------- */
   function renderEmDebate() {
+    if (!topicos.length) {
+      $("#emDebate").innerHTML = '<p class="text-soft">Ainda não há discussões. Comece uma conversa na comunidade.</p>';
+      return;
+    }
     $("#emDebate").innerHTML = topicos.slice(0, 4).map((t, i) => `
       <article class="debate-item">
         <span class="debate-num">${String(i + 1).padStart(2, "0")}</span>

@@ -297,7 +297,7 @@
                   <option value="imigracao">Imigração</option>
                 </select>
               </div>
-              <div id="listaTopicos" data-api="<?= e(url('community')) ?>" data-profile-url="<?= e(url('auth/view')) ?>" data-csrf="<?= e($csrfToken) ?>" data-user-id="<?= (int)($_SESSION['user']['id'] ?? 0) ?>"><!-- tópicos do banco -->
+              <div id="listaTopicos" data-api="<?= e(url('community')) ?>" data-profile-url="<?= e(url('auth/view')) ?>" data-csrf="<?= e($csrfToken) ?>" data-user-id="<?= (int)($_SESSION['user']['id'] ?? 0) ?>"><!-- tópicos do banco --></div>
               <p class="text-center text-soft p-4 mb-0 d-none" id="semTopicos">Nenhuma discussão encontrada.</p>
             </div>
           </div>

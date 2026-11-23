@@ -12,7 +12,7 @@ class AuthController
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $this->checkCsrf();
-            $email = trim($_POST['email'] ?? '');
+            $email = strtolower(trim($_POST['email'] ?? ''));
             $password = $_POST['password'] ?? '';
             $user = filter_var($email, FILTER_VALIDATE_EMAIL) ? Auth::findByEmail($email) : null;
 
@@ -264,10 +264,10 @@ class AuthController
         }
     }
 
-    private function render(string $view, array $data = []): void
+    private function render(string $view, array $viewData = []): void
     {
         $base = __DIR__ . '/../Views/';
-        extract($data, EXTR_SKIP);
+        extract($viewData, EXTR_SKIP);
         ob_start();
         require $base . $view . '.php';
         $content = (string) ob_get_clean();

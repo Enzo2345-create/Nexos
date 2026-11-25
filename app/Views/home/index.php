@@ -20,6 +20,7 @@
           <li class="nav-item"><a class="nav-link" href="#noticias">Notícias</a></li>
           <li class="nav-item"><a class="nav-link" href="#comunidade">Comunidade</a></li>
           <li class="nav-item"><a class="nav-link" href="#glossario">Glossário</a></li>
+          <li class="nav-item"><a class="nav-link" href="<?= url('sobre') ?>">Sobre nós</a></li>
         </ul>
         <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0">
           <span class="points-pill" title="Seus pontos"><i class="bi bi-star-fill"></i> <span class="js-meus-pontos"><?= (int)($userPoints ?? 0) ?></span> pts</span>
@@ -424,10 +425,11 @@
             <li><a href="#comunidade">Comunidade</a></li>
             <li><a href="#desafio">Desafio</a></li>
             <li><a href="#glossario">Glossário</a></li>
+            <li><a href="<?= url('sobre') ?>">Sobre nós</a></li>
           </ul>
         </div>
         <div class="col-6 col-lg-3">
-          <h5>Equipe</h5>
+          <h5><a href="<?= url('sobre') ?>">Equipe</a></h5>
           <ul class="list-unstyled d-grid gap-2">
             <li>Artur Rebouças Lima Costa</li>
             <li>Enzo Vinícius da Cruz Chaves</li>

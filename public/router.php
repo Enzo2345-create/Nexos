@@ -2,4 +2,6 @@
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?: '/';
 $file = __DIR__ . $path;
 if ($path !== '/' && is_file($file)) return false;
+// Mapeia /controlador/metodo para ?url=, como faz o .htaccess no Apache.
+if (empty($_GET['url']) && $path !== '/') $_GET['url'] = trim($path, '/');
 require __DIR__ . '/index.php';

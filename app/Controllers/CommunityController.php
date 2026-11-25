@@ -223,7 +223,6 @@ class CommunityController
             $db->query('SELECT id FROM QuizRotacao WHERE id=1 FOR UPDATE')->fetchColumn();
             $check = $db->prepare('SELECT COUNT(*) FROM QuizDiario WHERE data_quiz=?');
             $check->execute([$today]);
-<<<<<<< HEAD
             $existing = (int)$check->fetchColumn();
             if ($existing >= 10) {
 =======

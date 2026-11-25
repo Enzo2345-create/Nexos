@@ -170,6 +170,7 @@
       $("#modalArtigoCat").textContent = fonte.dataset.cat;
       $("#modalArtigoTexto").innerHTML = fonte.innerHTML;
       const img = $("#modalArtigoImg");
+      img.referrerPolicy = "no-referrer"; img.onerror = () => img.classList.add("d-none");
       if (fonte.dataset.img) { img.src = fonte.dataset.img; img.alt = fonte.dataset.titulo; img.classList.remove("d-none"); }
       else { img.classList.add("d-none"); img.removeAttribute("src"); }
       bootstrap.Modal.getOrCreateInstance($("#modalArtigo")).show();
@@ -181,7 +182,7 @@
       if (!lidos.has(fonte.id)) {
         lidos.add(fonte.id);
         store.set("lidos", Array.from(lidos));
-        if(userId && fonte.dataset.id) request(`${api}/readArticle/${fonte.dataset.id}`,{csrf}).then(r=>{meusPontos=r.points;atualizarPontos(0);}).catch(()=>{});
+        if(userId && fonte.dataset.id && !fonte.dataset.externo) request(`${api}/readArticle/${fonte.dataset.id}`,{csrf}).then(r=>{meusPontos=r.points;atualizarPontos(0);}).catch(()=>{});
         setTimeout(() => {if(userId)aviso("Leitura registrada.");}, 400);
       }
     });

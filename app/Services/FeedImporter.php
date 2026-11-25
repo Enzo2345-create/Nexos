@@ -135,6 +135,12 @@ class FeedImporter
                 $slug = self::categoria($texto);
                 $dataSql = date('Y-m-d H:i:s', $data);
 
+                // O feed não trouxe foto: usa a imagem de capa da própria matéria (og:image)
+                if ($gravar && $tipo === 'artigo' && $item['imagem'] === null
+                    && microtime(true) - $inicio < (int) $config['tempo_max_segundos']) {
+                    $item['imagem'] = self::imagemDaPagina($item['link']);
+                }
+
                 if ($gravar) {
                     if ($tipo === 'noticia') {
                         $insereNoticia->execute([
@@ -172,6 +178,23 @@ class FeedImporter
                     mb_substr($titulo, 0, 90),
                     $feed['nome']
                 );
+            }
+        }
+
+        // Completa a foto de artigos antigos que ficaram sem imagem (poucos por rodada)
+        if ($gravar) {
+            $semFoto = $pdo->query(
+                'SELECT id_artigo, link FROM artigo WHERE link IS NOT NULL AND imagem IS NULL ORDER BY RAND() LIMIT 4'
+            )->fetchAll();
+            $salvaFoto = $pdo->prepare('UPDATE artigo SET imagem = ? WHERE id_artigo = ?');
+            foreach ($semFoto as $s) {
+                if (microtime(true) - $inicio > (int) $config['tempo_max_segundos'] + 8) {
+                    break;
+                }
+                $img = self::imagemDaPagina($s['link']);
+                if ($img !== null) {
+                    $salvaFoto->execute([$img, $s['id_artigo']]);
+                }
             }
         }
 
@@ -297,6 +320,36 @@ class FeedImporter
             $url = trim($url);
             if (self::imagemValida($url)) {
                 return $url;
+            }
+        }
+
+        return null;
+    }
+
+    /** Abre a página da matéria e lê a imagem de capa (og:image ou twitter:image). */
+    private static function imagemDaPagina(string $url): ?string
+    {
+        $html = self::baixar($url);
+        if ($html === null) {
+            return null;
+        }
+        $html = substr($html, 0, 300000);
+        $padroes = [
+            '/<meta[^>]+(?:property|name)=["\'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["\'][^>]*content=["\']([^"\']+)["\']/i',
+            '/<meta[^>]+content=["\']([^"\']+)["\'][^>]*(?:property|name)=["\'](?:og:image(?::secure_url)?|twitter:image(?::src)?)["\']/i',
+        ];
+        foreach ($padroes as $padrao) {
+            if (preg_match($padrao, $html, $m)) {
+                $img = trim(html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+                if (strpos($img, '//') === 0) {
+                    $img = 'https:' . $img;
+                } elseif (isset($img[0]) && $img[0] === '/') {
+                    $partes = parse_url($url);
+                    $img = ($partes['scheme'] ?? 'https') . '://' . ($partes['host'] ?? '') . $img;
+                }
+                if (self::imagemValida($img)) {
+                    return $img;
+                }
             }
         }
 

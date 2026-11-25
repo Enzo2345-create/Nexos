@@ -39,6 +39,19 @@ class Conteudo
         $stmt->execute();
         $externos = $stmt->fetchAll();
 
+        // Artigos externos que já receberam resenhas continuam na lista, mesmo quando saem dos mais recentes.
+        $ids = array_column($externos, 'id_artigo');
+        $comResenha = $pdo->query(
+            $base . 'AND a.link IS NOT NULL
+                     AND EXISTS (SELECT 1 FROM Resenha r WHERE r.id_artigo = a.id_artigo AND r.publicado = 1)
+                     ORDER BY a.data_publicacao DESC, a.id_artigo DESC'
+        )->fetchAll();
+        foreach ($comResenha as $r) {
+            if (!in_array($r['id_artigo'], $ids)) {
+                $externos[] = $r;
+            }
+        }
+
         if ($minimo > 0 && count($externos) >= $minimo) {
             return $externos;
         }

@@ -223,32 +223,45 @@ class CommunityController
             $db->query('SELECT id FROM QuizRotacao WHERE id=1 FOR UPDATE')->fetchColumn();
             $check = $db->prepare('SELECT COUNT(*) FROM QuizDiario WHERE data_quiz=?');
             $check->execute([$today]);
-            if ((int)$check->fetchColumn() > 0) {
+            $existing = (int)$check->fetchColumn();
+            if ($existing >= 10) {
                 $db->commit();
                 return;
             }
 
-            $available = $db->query(
-                'SELECT q.id_quiz,q.pergunta,q.opcao_a,q.opcao_b,q.opcao_c,q.opcao_d,q.correta,q.fonte
-                 FROM Quiz q LEFT JOIN QuizUso u ON u.id_quiz=q.id_quiz
-                 WHERE q.publicado=1 AND q.fonte IS NOT NULL AND q.fonte<>\'\' AND u.id_quiz IS NULL ORDER BY RAND()'
-            )->fetchAll();
-            if (!$available) {
-                // O banco todo já apareceu. Começa um novo ciclo, evitando repetição até aqui.
-                $db->exec('DELETE FROM QuizUso');
-                $available = $db->query(
-                    'SELECT id_quiz,pergunta,opcao_a,opcao_b,opcao_c,opcao_d,correta,fonte
-                     FROM Quiz WHERE publicado=1 AND fonte IS NOT NULL AND fonte<>\'\' ORDER BY RAND()'
-                )->fetchAll();
+            $missing = 10 - $existing;
+            $selectAvailable = static function () use ($db, $today): array {
+                $stmt = $db->prepare(
+                    'SELECT q.id_quiz,q.pergunta,q.opcao_a,q.opcao_b,q.opcao_c,q.opcao_d,q.correta,q.fonte
+                     FROM Quiz q
+                     LEFT JOIN QuizUso u ON u.id_quiz=q.id_quiz
+                     WHERE q.publicado=1 AND q.fonte IS NOT NULL AND q.fonte<>\'\'
+                       AND u.id_quiz IS NULL
+                       AND NOT EXISTS (SELECT 1 FROM QuizDiario d WHERE d.data_quiz=? AND d.id_quiz=q.id_quiz)
+                     ORDER BY RAND()'
+                );
+                $stmt->execute([$today]);
+                return $stmt->fetchAll();
+            };
+            $available = $selectAvailable();
+            if (count($available) < $missing) {
+                // Reinicia o ciclo sem liberar perguntas já usadas no quiz de hoje.
+                $reset = $db->prepare(
+                    'DELETE FROM QuizUso WHERE id_quiz NOT IN
+                     (SELECT id_quiz FROM QuizDiario WHERE data_quiz=?)'
+                );
+                $reset->execute([$today]);
+                $available = $selectAvailable();
             }
 
             $insertDaily = $db->prepare(
                 'INSERT INTO QuizDiario(data_quiz,id_quiz,ordem,pergunta,opcao_a,opcao_b,opcao_c,opcao_d,correta,fonte)
                  VALUES(?,?,?,?,?,?,?,?,?,?)'
             );
-            $markUsed = $db->prepare('INSERT INTO QuizUso(id_quiz,data_uso) VALUES(?,?)');
-            foreach (array_slice($available, 0, 5) as $order => $q) {
-                $insertDaily->execute([$today,(int)$q['id_quiz'],$order+1,$q['pergunta'],$q['opcao_a'],$q['opcao_b'],$q['opcao_c'],$q['opcao_d'],(int)$q['correta'],$q['fonte']]);
+            $markUsed = $db->prepare('INSERT INTO QuizUso(id_quiz,data_uso) VALUES(?,?) ON DUPLICATE KEY UPDATE data_uso=VALUES(data_uso)');
+            foreach (array_slice($available, 0, $missing) as $offset => $q) {
+                $order = $existing + $offset + 1;
+                $insertDaily->execute([$today,(int)$q['id_quiz'],$order,$q['pergunta'],$q['opcao_a'],$q['opcao_b'],$q['opcao_c'],$q['opcao_d'],(int)$q['correta'],$q['fonte']]);
                 $markUsed->execute([(int)$q['id_quiz'],$today]);
             }
             $db->commit();

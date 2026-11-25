@@ -339,20 +339,29 @@
             <div class="col-lg-5">
               <span class="kicker kicker-gold mb-3">Quiz educativo</span>
               <h2 class="mb-3">Quanto você sabe sobre a história étnico-racial do Brasil?</h2>
-              <p class="opacity-75 mb-0">Leis, datas e conceitos. Cada resposta certa vale <strong class="text-gold">10 pontos</strong> no ranking.</p>
+<<<<<<< HEAD
+              <p class="opacity-75 mb-0">Responda a 10 questões por dia. Ganhe <strong class="text-gold">10 pontos</strong> se acertar e <strong class="text-gold">2 pontos</strong> por continuar tentando. As fontes aparecem após cada resposta.</p>
+=======
+              <p class="opacity-75 mb-0">Um desafio novo a cada dia. Ganhe <strong class="text-gold">10 pontos</strong> se acertar e <strong class="text-gold">2 pontos</strong> por continuar tentando. As fontes aparecem após cada resposta.</p>
+>>>>>>> 3fd4d2494a0669337856496ae2dabcc86dca41f0
             </div>
             <div class="col-lg-7">
               <div class="quiz-panel">
                 <div class="d-flex justify-content-between small opacity-75 mb-2">
-                  <span id="quizContador">Pergunta 1 de 4</span><span><span class="js-meus-pontos">0</span> pts</span>
+<<<<<<< HEAD
+                  <span><span id="quizContador">Pergunta 1 de 10</span> · <span id="quizData">Quiz do dia</span></span><span><span class="js-meus-pontos">0</span> pts</span>
+=======
+                  <span><span id="quizContador">Pergunta 1 de 5</span> · <span id="quizData">Quiz do dia</span></span><span><span class="js-meus-pontos">0</span> pts</span>
+>>>>>>> 3fd4d2494a0669337856496ae2dabcc86dca41f0
                 </div>
-                <div class="progress progress-raizes mb-4"><div class="progress-bar" id="quizBarra" style="width: 25%"></div></div>
+                <div class="progress progress-raizes mb-4"><div class="progress-bar" id="quizBarra" style="width: 10%"></div></div>
                 <h3 class="mb-4" id="quizPergunta">Carregando...</h3>
                 <div id="quizOpcoes"></div>
                 <div class="d-flex justify-content-between align-items-center gap-3 mt-3">
                   <p class="small mb-0 opacity-75" id="quizFeedback"></p>
                   <button class="btn btn-raizes-gold d-none" id="quizProxima">Próxima <i class="bi bi-arrow-right"></i></button>
                 </div>
+                <p class="small opacity-75 mt-3 mb-0" id="quizFonte"></p>
               </div>
             </div>
           </div>

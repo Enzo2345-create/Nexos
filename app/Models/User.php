@@ -17,7 +17,7 @@ class User
                     p.dt_nasc AS birth_date,
                     u.foto_de_perfil
                  FROM usuario u
-                 INNER JOIN pessoa p ON p.id_pessoa = u.id_pessoa
+                 INNER JOIN pessoa p ON p.id_pessoa = u.id_pessoa AND p.ativo=1
                  ORDER BY p.nome_pessoa'
             )
             ->fetchAll();
@@ -36,7 +36,7 @@ class User
                 u.foto_de_perfil
              FROM usuario u
              INNER JOIN pessoa p ON p.id_pessoa = u.id_pessoa
-             WHERE p.id_pessoa = ?'
+             WHERE p.id_pessoa = ? AND p.ativo=1'
         );
         $stmt->execute([$id]);
         return $stmt->fetch() ?: null;

@@ -6,7 +6,7 @@ class Auth
     public static function emailOrCpfExists(string $email, string $cpf): bool
     {
         $stmt = Database::connect()->prepare(
-            'SELECT 1 FROM pessoa WHERE email = ? OR cpf = ? LIMIT 1'
+            'SELECT 1 FROM pessoa WHERE (email = ? OR cpf = ?) AND ativo = 1 LIMIT 1'
         );
         $stmt->execute([$email, $cpf]);
         return (bool) $stmt->fetchColumn();
@@ -53,7 +53,7 @@ class Auth
              FROM pessoa p
              LEFT JOIN usuario u ON u.id_pessoa = p.id_pessoa
              LEFT JOIN administrador a ON a.id_pessoa = p.id_pessoa
-             WHERE p.email = ? AND (u.id_pessoa IS NOT NULL OR a.id_pessoa IS NOT NULL)
+             WHERE p.email = ? AND p.ativo = 1 AND (u.id_pessoa IS NOT NULL OR a.id_pessoa IS NOT NULL)
              LIMIT 1'
         );
         $stmt->execute([$email]);
@@ -92,15 +92,28 @@ class Auth
 
     public static function publicProfile(int $id): ?array
     {
-        $stmt = Database::connect()->prepare('SELECT p.id_pessoa,p.nome_pessoa,p.nome_usuario,p.email,p.cpf,p.dt_nasc,u.foto_de_perfil FROM Pessoa p JOIN Usuario u USING(id_pessoa) WHERE p.id_pessoa=?');
+        $stmt = Database::connect()->prepare('SELECT p.id_pessoa,p.nome_pessoa,p.nome_usuario,p.email,p.cpf,p.dt_nasc,u.foto_de_perfil FROM Pessoa p JOIN Usuario u USING(id_pessoa) WHERE p.id_pessoa=? AND p.ativo=1');
         $stmt->execute([$id]);
         return $stmt->fetch() ?: null;
     }
 
     public static function deleteAccount(int $id): void
     {
-        $stmt = Database::connect()->prepare('DELETE FROM Pessoa WHERE id_pessoa=?');
-        $stmt->execute([$id]);
+        $db = Database::connect();
+        $db->beginTransaction();
+        try {
+            // Mantém os registros no banco, mas desativa tudo que pode aparecer publicamente.
+            foreach (['Topico', 'Resposta', 'Resenha'] as $table) {
+                $stmt = $db->prepare("UPDATE {$table} SET publicado=0 WHERE id_usuario=?");
+                $stmt->execute([$id]);
+            }
+            $stmt = $db->prepare('UPDATE Pessoa SET ativo=0 WHERE id_pessoa=?');
+            $stmt->execute([$id]);
+            $db->commit();
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            throw $e;
+        }
     }
 
     public static function activityHistory(int $id): array

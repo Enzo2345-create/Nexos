@@ -60,6 +60,22 @@ class Auth
         return $stmt->fetch() ?: null;
     }
 
+    public static function findInactiveByEmail(string $email): ?array
+    {
+        $stmt = Database::connect()->prepare(
+            'SELECT id_pessoa, nome_pessoa, nome_usuario, email, senha
+             FROM pessoa WHERE email = ? AND ativo = 0 LIMIT 1'
+        );
+        $stmt->execute([$email]);
+        return $stmt->fetch() ?: null;
+    }
+
+    public static function reactivateAccount(int $id): void
+    {
+        $stmt = Database::connect()->prepare('UPDATE pessoa SET ativo = 1 WHERE id_pessoa = ? AND ativo = 0');
+        $stmt->execute([$id]);
+    }
+
     public static function updateProfilePhoto(int $userId, string $photoPath): void
     {
         $stmt = Database::connect()->prepare(

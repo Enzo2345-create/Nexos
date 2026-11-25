@@ -9,6 +9,8 @@ class AuthController
     {
         $this->startSession();
         $csrf = $this->csrfToken();
+        $success = $_SESSION['reactivated_message'] ?? '';
+        unset($_SESSION['reactivated_message']);
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $this->checkCsrf();
@@ -39,8 +41,40 @@ class AuthController
         $this->render('auth/login', [
             'title' => 'Entrar | Raízes',
             'error' => $error,
+            'success' => $success,
             'email' => $email ?? '',
             'csrf' => $csrf,
+        ]);
+    }
+
+    public function reactivate(): void
+    {
+        $this->startSession();
+        $csrf = $this->csrfToken();
+        $email = '';
+        $error = '';
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->checkCsrf();
+            $email = strtolower(trim($_POST['email'] ?? ''));
+            $password = $_POST['password'] ?? '';
+            $user = filter_var($email, FILTER_VALIDATE_EMAIL) ? Auth::findInactiveByEmail($email) : null;
+
+            if ($user && password_verify($password, $user['senha'])) {
+                Auth::reactivateAccount((int) $user['id_pessoa']);
+                $_SESSION['reactivated_message'] = 'Que bom ter você de volta! Sua conta foi reativada com sucesso.';
+                header('Location: ' . url('auth/login'));
+                exit;
+            }
+            http_response_code(422);
+            $error = 'Não encontramos uma conta desativada com esses dados. Confira o e-mail e a senha.';
+        }
+
+        $this->render('auth/reactivate', [
+            'title' => 'Reativar conta | Nexos',
+            'csrf' => $csrf,
+            'email' => $email,
+            'error' => $error,
         ]);
     }
 

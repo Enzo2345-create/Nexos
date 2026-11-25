@@ -2,6 +2,7 @@
     <div class="forum-card p-4 p-md-5 mx-auto" style="max-width: 480px">
         <span class="kicker">Comunidade Raízes</span>
         <h1 class="section-title mb-4">Entrar</h1>
+        <?php if (!empty($success)): ?><div class="alert alert-success" role="status"><?= e($success) ?></div><?php endif; ?>
         <?php if ($error): ?><div class="alert alert-danger" role="alert"><?= e($error) ?></div><?php endif; ?>
         <form method="post" action="<?= url('auth/login') ?>">
             <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
@@ -16,6 +17,7 @@
             <button class="btn btn-raizes w-100" type="submit">Entrar</button>
         </form>
         <p class="mt-3 mb-0">Ainda não tem conta? <a href="<?= url('auth/register') ?>">Cadastre-se</a>.</p>
+        <p class="mt-2 mb-0">Desativou sua conta? <a href="<?= url('auth/reactivate') ?>">Reativar conta</a>.</p>
         <a class="d-inline-block mt-3" href="<?= url('home/index') ?>">Voltar ao início</a>
     </div>
 </main>

@@ -223,12 +223,17 @@ class CommunityController
             $db->query('SELECT id FROM QuizRotacao WHERE id=1 FOR UPDATE')->fetchColumn();
             $check = $db->prepare('SELECT COUNT(*) FROM QuizDiario WHERE data_quiz=?');
             $check->execute([$today]);
+<<<<<<< HEAD
             $existing = (int)$check->fetchColumn();
             if ($existing >= 10) {
+=======
+            if ((int)$check->fetchColumn() > 0) {
+>>>>>>> 3fd4d2494a0669337856496ae2dabcc86dca41f0
                 $db->commit();
                 return;
             }
 
+<<<<<<< HEAD
             $missing = 10 - $existing;
             $selectAvailable = static function () use ($db, $today): array {
                 $stmt = $db->prepare(
@@ -252,16 +257,36 @@ class CommunityController
                 );
                 $reset->execute([$today]);
                 $available = $selectAvailable();
+=======
+            $available = $db->query(
+                'SELECT q.id_quiz,q.pergunta,q.opcao_a,q.opcao_b,q.opcao_c,q.opcao_d,q.correta,q.fonte
+                 FROM Quiz q LEFT JOIN QuizUso u ON u.id_quiz=q.id_quiz
+                 WHERE q.publicado=1 AND q.fonte IS NOT NULL AND q.fonte<>\'\' AND u.id_quiz IS NULL ORDER BY RAND()'
+            )->fetchAll();
+            if (!$available) {
+                // O banco todo já apareceu. Começa um novo ciclo, evitando repetição até aqui.
+                $db->exec('DELETE FROM QuizUso');
+                $available = $db->query(
+                    'SELECT id_quiz,pergunta,opcao_a,opcao_b,opcao_c,opcao_d,correta,fonte
+                     FROM Quiz WHERE publicado=1 AND fonte IS NOT NULL AND fonte<>\'\' ORDER BY RAND()'
+                )->fetchAll();
+>>>>>>> 3fd4d2494a0669337856496ae2dabcc86dca41f0
             }
 
             $insertDaily = $db->prepare(
                 'INSERT INTO QuizDiario(data_quiz,id_quiz,ordem,pergunta,opcao_a,opcao_b,opcao_c,opcao_d,correta,fonte)
                  VALUES(?,?,?,?,?,?,?,?,?,?)'
             );
+<<<<<<< HEAD
             $markUsed = $db->prepare('INSERT INTO QuizUso(id_quiz,data_uso) VALUES(?,?) ON DUPLICATE KEY UPDATE data_uso=VALUES(data_uso)');
             foreach (array_slice($available, 0, $missing) as $offset => $q) {
                 $order = $existing + $offset + 1;
                 $insertDaily->execute([$today,(int)$q['id_quiz'],$order,$q['pergunta'],$q['opcao_a'],$q['opcao_b'],$q['opcao_c'],$q['opcao_d'],(int)$q['correta'],$q['fonte']]);
+=======
+            $markUsed = $db->prepare('INSERT INTO QuizUso(id_quiz,data_uso) VALUES(?,?)');
+            foreach (array_slice($available, 0, 5) as $order => $q) {
+                $insertDaily->execute([$today,(int)$q['id_quiz'],$order+1,$q['pergunta'],$q['opcao_a'],$q['opcao_b'],$q['opcao_c'],$q['opcao_d'],(int)$q['correta'],$q['fonte']]);
+>>>>>>> 3fd4d2494a0669337856496ae2dabcc86dca41f0
                 $markUsed->execute([(int)$q['id_quiz'],$today]);
             }
             $db->commit();

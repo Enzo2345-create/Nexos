@@ -16,7 +16,7 @@ class CommunityController
             $t['autor'] = $t['nome_pessoa'];
             $t['texto'] = $t['mensagem'];
             return $t;
-        }, Database::connect()->query('SELECT t.id_topico,t.id_usuario,t.categoria AS cat,t.titulo,t.mensagem,p.nome_pessoa,t.criado_em,COUNT(r.id_resposta) AS respostas FROM Topico t JOIN Pessoa p ON p.id_pessoa=t.id_usuario AND p.ativo=1 LEFT JOIN Resposta r ON r.id_topico=t.id_topico AND r.publicado=1 WHERE t.publicado=1 GROUP BY t.id_topico ORDER BY t.criado_em DESC')->fetchAll()));
+        }, Database::connect()->query('SELECT t.id_topico,t.id_usuario,t.categoria AS cat,t.titulo,t.mensagem,CASE WHEN p.ativo=1 THEN p.nome_pessoa ELSE \'Conta desativada\' END AS nome_pessoa,t.criado_em,COUNT(r.id_resposta) AS respostas FROM Topico t JOIN Pessoa p ON p.id_pessoa=t.id_usuario LEFT JOIN Resposta r ON r.id_topico=t.id_topico AND r.publicado=1 WHERE t.publicado=1 GROUP BY t.id_topico ORDER BY t.criado_em DESC')->fetchAll()));
     }
 
     public function ranking(): void
@@ -43,7 +43,7 @@ class CommunityController
 
     public function replies(string $id=''): void
     {
-        $stmt=Database::connect()->prepare('SELECT r.id_resposta,r.id_usuario,r.mensagem,r.criado_em,p.nome_pessoa FROM Resposta r JOIN Pessoa p ON p.id_pessoa=r.id_usuario AND p.ativo=1 WHERE r.id_topico=? AND r.publicado=1 ORDER BY r.criado_em'); $stmt->execute([(int)$id]); $this->json($stmt->fetchAll());
+        $stmt=Database::connect()->prepare('SELECT r.id_resposta,r.id_usuario,r.mensagem,r.criado_em,CASE WHEN p.ativo=1 THEN p.nome_pessoa ELSE \'Conta desativada\' END AS nome_pessoa FROM Resposta r JOIN Pessoa p ON p.id_pessoa=r.id_usuario WHERE r.id_topico=? AND r.publicado=1 ORDER BY r.criado_em'); $stmt->execute([(int)$id]); $this->json($stmt->fetchAll());
     }
 
     public function reply(string $id=''): void
@@ -83,7 +83,7 @@ class CommunityController
 
     public function reviews(string $id=''): void
     {
-        $stmt=Database::connect()->prepare('SELECT r.id_resenha,r.id_usuario,r.texto,r.data_post,p.nome_pessoa,COALESCE(AVG(a.nota),0) AS media,COUNT(a.id_usuario) AS votos FROM Resenha r JOIN Pessoa p ON p.id_pessoa=r.id_usuario AND p.ativo=1 LEFT JOIN AvaliacaoResenha a ON a.id_resenha=r.id_resenha WHERE r.id_artigo=? AND r.publicado=1 GROUP BY r.id_resenha ORDER BY media DESC,r.data_post DESC'); $stmt->execute([(int)$id]); $this->json($stmt->fetchAll());
+        $stmt=Database::connect()->prepare('SELECT r.id_resenha,r.id_usuario,r.texto,r.data_post,CASE WHEN p.ativo=1 THEN p.nome_pessoa ELSE \'Conta desativada\' END AS nome_pessoa,COALESCE(AVG(a.nota),0) AS media,COUNT(a.id_usuario) AS votos FROM Resenha r JOIN Pessoa p ON p.id_pessoa=r.id_usuario LEFT JOIN AvaliacaoResenha a ON a.id_resenha=r.id_resenha WHERE r.id_artigo=? AND r.publicado=1 GROUP BY r.id_resenha ORDER BY media DESC,r.data_post DESC'); $stmt->execute([(int)$id]); $this->json($stmt->fetchAll());
     }
 
     public function review(): void

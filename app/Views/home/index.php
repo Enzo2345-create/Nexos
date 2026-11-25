@@ -20,6 +20,7 @@
           <li class="nav-item"><a class="nav-link" href="#noticias">Notícias</a></li>
           <li class="nav-item"><a class="nav-link" href="#comunidade">Comunidade</a></li>
           <li class="nav-item"><a class="nav-link" href="#glossario">Glossário</a></li>
+          <li class="nav-item"><a class="nav-link" href="<?= url('sobre') ?>">Sobre nós</a></li>
         </ul>
         <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0">
           <span class="points-pill" title="Seus pontos"><i class="bi bi-star-fill"></i> <span class="js-meus-pontos"><?= (int)($userPoints ?? 0) ?></span> pts</span>
@@ -203,7 +204,10 @@
                   <p><?= e($a['resumo']) ?></p>
                   <?php if (!empty($a['link'])): ?>
                     <p class="small text-soft mb-2">Fonte: <?= e($a['fonte']) ?></p>
-                    <a class="btn-read" style="text-decoration:none" href="<?= e($a['link']) ?>" target="_blank" rel="noopener noreferrer">Ler em <?= e($a['fonte']) ?> <i class="bi bi-box-arrow-up-right"></i></a>
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                      <button class="btn-read" data-artigo="artigo-<?= (int) $a['id_artigo'] ?>" data-artigo-id="<?= (int)$a['id_artigo'] ?>">Resenhas <i class="bi bi-chat-square-text"></i></button>
+                      <a class="btn-read" style="text-decoration:none" href="<?= e($a['link']) ?>" target="_blank" rel="noopener noreferrer">Ler em <?= e($a['fonte']) ?> <i class="bi bi-box-arrow-up-right"></i></a>
+                    </div>
                   <?php else: ?>
                     <button class="btn-read" data-artigo="artigo-<?= (int) $a['id_artigo'] ?>" data-artigo-id="<?= (int)$a['id_artigo'] ?>">Ler artigo <i class="bi bi-arrow-right"></i></button>
                   <?php endif; ?>
@@ -216,11 +220,16 @@
         <!-- Conteúdo completo dos artigos (exibido no modal) -->
         <div class="d-none">
           <?php foreach ($artigos as $a): ?>
-            <?php if (!empty($a['link'])) { continue; } /* artigos externos abrem o site de origem */ ?>
+            <?php $externo = !empty($a['link']); /* externos: o modal mostra o resumo, o link da matéria e as resenhas */ ?>
             <div id="artigo-<?= (int) $a['id_artigo'] ?>" data-id="<?= (int)$a['id_artigo'] ?>"
                  data-titulo="<?= e($a['titulo']) ?>"
-                 <?php if (!empty($a['imagem'])): ?>data-img="<?= asset($a['imagem']) ?>"<?php endif; ?>
-                 data-cat="<?= e($a['categoria']) ?>"><?= $a['conteudo'] /* HTML escrito pela equipe e guardado no banco */ ?></div>
+                 <?php if ($externo): ?>data-externo="1"<?php endif; ?>
+                 <?php if (!empty($a['imagem'])): ?>data-img="<?= $externo ? e($a['imagem']) : asset($a['imagem']) ?>"<?php endif; ?>
+                 data-cat="<?= e($a['categoria']) ?>"><?= $a['conteudo'] /* HTML escrito pela equipe (ou resumo do feed, já escapado) */ ?>
+              <?php if ($externo): ?>
+                <p class="mb-0"><a href="<?= e($a['link']) ?>" target="_blank" rel="noopener noreferrer">Ler a matéria completa em <?= e($a['fonte']) ?> <i class="bi bi-box-arrow-up-right"></i></a></p>
+              <?php endif; ?>
+            </div>
           <?php endforeach; ?>
         </div>
       </div>
@@ -424,10 +433,11 @@
             <li><a href="#comunidade">Comunidade</a></li>
             <li><a href="#desafio">Desafio</a></li>
             <li><a href="#glossario">Glossário</a></li>
+            <li><a href="<?= url('sobre') ?>">Sobre nós</a></li>
           </ul>
         </div>
         <div class="col-6 col-lg-3">
-          <h5>Equipe</h5>
+          <h5><a href="<?= url('sobre') ?>">Equipe</a></h5>
           <ul class="list-unstyled d-grid gap-2">
             <li>Artur Rebouças Lima Costa</li>
             <li>Enzo Vinícius da Cruz Chaves</li>

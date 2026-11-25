@@ -44,7 +44,7 @@ class HomeController
         $this->render('home/index', $dados + [
             'csrfToken' => $csrfToken,
             'userPoints' => $userPoints,
-            'title' => 'Raízes | Fórum de Discussão sobre Diversidade Étnico-Racial',
+            'title' => 'Nexos | Fórum de Discussão sobre Diversidade Étnico-Racial',
             'pageScript' => 'js/script.js',
             'homePage' => true,
         ]);

@@ -72,21 +72,8 @@ class Auth
 
     public static function reactivateAccount(int $id): void
     {
-        $db = Database::connect();
-        $db->beginTransaction();
-        try {
-            $stmt = $db->prepare('UPDATE pessoa SET ativo = 1 WHERE id_pessoa = ? AND ativo = 0');
-            $stmt->execute([$id]);
-            // Recupera a visibilidade das publicações ocultadas pela versão anterior.
-            foreach (['Topico', 'Resposta', 'Resenha'] as $table) {
-                $restore = $db->prepare("UPDATE {$table} SET publicado = 1 WHERE id_usuario = ?");
-                $restore->execute([$id]);
-            }
-            $db->commit();
-        } catch (\Throwable $e) {
-            if ($db->inTransaction()) $db->rollBack();
-            throw $e;
-        }
+        $stmt = Database::connect()->prepare('UPDATE pessoa SET ativo = 1 WHERE id_pessoa = ? AND ativo = 0');
+        $stmt->execute([$id]);
     }
 
     public static function updateProfilePhoto(int $userId, string $photoPath): void
@@ -131,7 +118,11 @@ class Auth
         $db = Database::connect();
         $db->beginTransaction();
         try {
-            // Desativa somente a conta. As publicações e seus estados permanecem intactos.
+            // Mantém os registros no banco, mas desativa tudo que pode aparecer publicamente.
+            foreach (['Topico', 'Resposta', 'Resenha'] as $table) {
+                $stmt = $db->prepare("UPDATE {$table} SET publicado=0 WHERE id_usuario=?");
+                $stmt->execute([$id]);
+            }
             $stmt = $db->prepare('UPDATE Pessoa SET ativo=0 WHERE id_pessoa=?');
             $stmt->execute([$id]);
             $db->commit();

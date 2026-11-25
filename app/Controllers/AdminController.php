@@ -52,9 +52,9 @@ class AdminController
 
     public function saveQuiz(): void
     {
-        $this->guard();$this->post();$this->csrf();$id=(int)($_POST['id']??0);$question=trim($_POST['question']??'');$options=[trim($_POST['a']??''),trim($_POST['b']??''),trim($_POST['c']??''),trim($_POST['d']??'')];$correct=(int)($_POST['correct']??-1);
-        if(mb_strlen($question)<10||mb_strlen($question)>500||min(array_map('mb_strlen',$options))<1||max(array_map('mb_strlen',$options))>300||$correct<0||$correct>3){http_response_code(422);exit('Confira a pergunta, as quatro opções e a resposta correta.');}
-        $db=Database::connect();if($id){$s=$db->prepare('UPDATE Quiz SET pergunta=?,opcao_a=?,opcao_b=?,opcao_c=?,opcao_d=?,correta=?,publicado=? WHERE id_quiz=?');$s->execute([$question,...$options,$correct,isset($_POST['published'])?1:0,$id]);}else{$s=$db->prepare('INSERT INTO Quiz(pergunta,opcao_a,opcao_b,opcao_c,opcao_d,correta,publicado) VALUES(?,?,?,?,?,?,?)');$s->execute([$question,...$options,$correct,isset($_POST['published'])?1:0]);}header('Location: '.url('admin/index'));exit;
+        $this->guard();$this->post();$this->csrf();$id=(int)($_POST['id']??0);$question=trim($_POST['question']??'');$options=[trim($_POST['a']??''),trim($_POST['b']??''),trim($_POST['c']??''),trim($_POST['d']??'')];$correct=(int)($_POST['correct']??-1);$source=trim($_POST['source']??'');$published=isset($_POST['published'])?1:0;
+        if(mb_strlen($question)<10||mb_strlen($question)>500||min(array_map('mb_strlen',$options))<1||max(array_map('mb_strlen',$options))>300||$correct<0||$correct>3||($source!==''&&(!filter_var($source,FILTER_VALIDATE_URL)||!preg_match('#^https?://#i',$source)||mb_strlen($source)>600))||($published&&$source==='')){http_response_code(422);exit('Confira a pergunta, as quatro opções, a resposta correta e informe uma fonte válida antes de publicar.');}
+        $db=Database::connect();if($id){$s=$db->prepare('UPDATE Quiz SET pergunta=?,opcao_a=?,opcao_b=?,opcao_c=?,opcao_d=?,correta=?,fonte=?,publicado=? WHERE id_quiz=?');$s->execute([$question,...$options,$correct,$source?:null,$published,$id]);}else{$s=$db->prepare('INSERT INTO Quiz(pergunta,opcao_a,opcao_b,opcao_c,opcao_d,correta,fonte,publicado) VALUES(?,?,?,?,?,?,?,?)');$s->execute([$question,...$options,$correct,$source?:null,$published]);}header('Location: '.url('admin/index'));exit;
     }
 
     public function deleteQuiz(string $id=''): void

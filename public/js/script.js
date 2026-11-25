@@ -202,10 +202,39 @@
   /* ---------- Desafio (quiz) ---------- */
   let PERGUNTAS = [];
   let atual = 0;
+  const fonteQuiz = $("#quizFonte");
+
+  function mostrarFonteQuiz(url) {
+    fonteQuiz.replaceChildren();
+    if (!url) return;
+    const link = document.createElement("a");
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = "Consultar a fonte da pergunta";
+    fonteQuiz.append("Fonte: ", link);
+  }
 
   async function carregarQuiz(){
-    try { PERGUNTAS=await request(api+"/quiz"); if(!PERGUNTAS.length){$("#quizPergunta").textContent="Novas perguntas em breve.";$("#quizOpcoes").innerHTML="";return;} atual=0;renderPergunta(); }
-    catch(err){$("#quizPergunta").textContent="O questionário está indisponível.";$("#quizFeedback").textContent=err.message;}
+    try {
+      const daily = await request(api+"/quiz");
+      PERGUNTAS = daily.questions || [];
+      if (daily.date) {
+        const data = new Date(`${daily.date}T12:00:00`);
+        $("#quizData").textContent = `Quiz de ${data.toLocaleDateString("pt-BR")}`;
+      }
+      if (!PERGUNTAS.length) {
+        $("#quizPergunta").textContent = "Novas perguntas em breve.";
+        $("#quizOpcoes").innerHTML = "";
+        $("#quizFeedback").textContent = "A equipe ainda precisa publicar perguntas no painel administrativo.";
+        return;
+      }
+      atual = 0;
+      renderPergunta();
+    } catch(err) {
+      $("#quizPergunta").textContent = "O questionário está indisponível.";
+      $("#quizFeedback").textContent = err.message;
+    }
   }
 
   function renderPergunta() {
@@ -213,9 +242,24 @@
     $("#quizContador").textContent = `Pergunta ${atual + 1} de ${PERGUNTAS.length}`;
     $("#quizBarra").style.width = `${((atual + 1) / PERGUNTAS.length) * 100}%`;
     $("#quizPergunta").textContent = q.p;
-    $("#quizFeedback").textContent = "";
-    $("#quizProxima").classList.add("d-none");
-    $("#quizOpcoes").innerHTML = q.o.map((op, i) => `<button class="quiz-option" data-op="${i}">${escapeHTML(op)}</button>`).join("");
+    $("#quizFeedback").textContent = q.answered
+      ? `Você já respondeu esta pergunta e recebeu ${q.earned} ponto${q.earned === 1 ? "" : "s"}.`
+      : "";
+    $("#quizProxima").classList.toggle("d-none", !q.answered);
+    $("#quizProxima").disabled = false;
+    $("#quizProxima").innerHTML = atual < PERGUNTAS.length - 1 ? 'Próxima <i class="bi bi-arrow-right"></i>' : 'Finalizar quiz';
+    mostrarFonteQuiz(q.answered ? q.source : null);
+    $("#quizOpcoes").innerHTML = q.o.map((op, i) => `<button class="quiz-option" data-op="${i}" ${q.answered ? "disabled" : ""}>${escapeHTML(op)}</button>`).join("");
+    if (q.answered) {
+      $$("#quizOpcoes .quiz-option").forEach((b, i) => {
+        if (i === q.correctChoice) b.classList.add("correct");
+        if (i === q.choice && !q.correct) b.classList.add("wrong");
+      });
+      if (userId) {
+        meusPontos = Number($(".js-meus-pontos")?.textContent || meusPontos);
+        atualizarPontos(0);
+      }
+    }
   }
 
   $("#quizOpcoes").addEventListener("click", async (e) => {
@@ -225,19 +269,55 @@
     const escolha = Number(botao.dataset.op);
     $$("#quizOpcoes .quiz-option").forEach(b=>b.disabled=true);
     try {
-      const result=await request(api+"/answer",{csrf,question:q.id,choice:escolha});
-      $$("#quizOpcoes .quiz-option").forEach((b,i)=>{if(i===result.correctChoice)b.classList.add("correct");});
-      if(result.correct){$("#quizFeedback").textContent=userId?"Resposta certa!":"Resposta certa! Entre para registrar seus pontos.";if(userId){meusPontos=result.points;atualizarPontos(0);if(result.earned)aviso("+10 pontos! Resposta certa.");}}
-      else {botao.classList.add("wrong");$("#quizFeedback").textContent="Quase! Veja a resposta correta em verde.";}
-    } catch(err){$("#quizFeedback").textContent=err.message;}
+      const result = await request(api+"/answer",{csrf,question:q.id,choice:escolha});
+      q.answered = true;
+      q.choice = result.choice ?? escolha;
+      q.correct = result.correct;
+      q.correctChoice = result.correctChoice;
+      q.earned = result.earned;
+      q.source = result.source;
+      $$("#quizOpcoes .quiz-option").forEach((b,i)=>{
+        if(i===result.correctChoice)b.classList.add("correct");
+        if(i===q.choice&&!result.correct)b.classList.add("wrong");
+      });
+      if (userId) {
+        meusPontos = result.points;
+        atualizarPontos(0);
+        $("#quizFeedback").textContent = result.alreadyAnswered
+          ? `Você já tinha respondido. Seu total nesta pergunta é ${result.earned} ponto${result.earned === 1 ? "" : "s"}.`
+          : result.correct
+            ? `Resposta certa! Você ganhou ${result.earned} pontos.`
+            : `Não foi dessa vez. Você ganhou ${result.earned} pontos por continuar tentando.`;
+        if (result.earned && !result.alreadyAnswered) aviso(`+${result.earned} pontos no quiz.`);
+      } else {
+        q.earned = 0;
+        $("#quizFeedback").textContent = result.correct
+          ? "Resposta certa! Entre na sua conta para registrar pontos."
+          : "Quase! A resposta foi registrada sem pontuação porque você não entrou na conta.";
+      }
+      mostrarFonteQuiz(result.source);
+    } catch(err) {
+      $$("#quizOpcoes .quiz-option").forEach(b=>b.disabled=false);
+      $("#quizFeedback").textContent=err.message;
+      return;
+    }
     const botaoProxima = $("#quizProxima");
-    botaoProxima.innerHTML = atual < PERGUNTAS.length - 1 ? 'Próxima <i class="bi bi-arrow-right"></i>' : 'Recomeçar <i class="bi bi-arrow-repeat"></i>';
+    botaoProxima.innerHTML = atual < PERGUNTAS.length - 1 ? 'Próxima <i class="bi bi-arrow-right"></i>' : 'Finalizar quiz';
     botaoProxima.classList.remove("d-none");
   });
 
   $("#quizProxima").addEventListener("click", () => {
-    atual = (atual + 1) % PERGUNTAS.length;
-    renderPergunta();
+    if (atual < PERGUNTAS.length - 1) {
+      atual++;
+      renderPergunta();
+      return;
+    }
+    $("#quizPergunta").textContent = "Quiz de hoje concluído!";
+    $("#quizOpcoes").replaceChildren();
+    $("#quizFeedback").textContent = "Volte amanhã para responder um novo conjunto de perguntas.";
+    mostrarFonteQuiz(null);
+    $("#quizProxima").disabled = true;
+    $("#quizProxima").textContent = "Desafio concluído";
   });
 
   /* ---------- Entrar (demonstração) ---------- */

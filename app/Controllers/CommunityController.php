@@ -16,7 +16,7 @@ class CommunityController
             $t['autor'] = $t['nome_pessoa'];
             $t['texto'] = $t['mensagem'];
             return $t;
-        }, Database::connect()->query('SELECT t.id_topico,t.id_usuario,t.categoria AS cat,t.titulo,t.mensagem,CASE WHEN p.ativo=1 THEN p.nome_pessoa ELSE \'Conta desativada\' END AS nome_pessoa,t.criado_em,COUNT(r.id_resposta) AS respostas FROM Topico t JOIN Pessoa p ON p.id_pessoa=t.id_usuario LEFT JOIN Resposta r ON r.id_topico=t.id_topico AND r.publicado=1 WHERE t.publicado=1 GROUP BY t.id_topico ORDER BY t.criado_em DESC')->fetchAll()));
+        }, Database::connect()->query('SELECT t.id_topico,t.id_usuario,t.categoria AS cat,t.titulo,t.mensagem,p.nome_pessoa,t.criado_em,COUNT(r.id_resposta) AS respostas FROM Topico t JOIN Pessoa p ON p.id_pessoa=t.id_usuario AND p.ativo=1 LEFT JOIN Resposta r ON r.id_topico=t.id_topico AND r.publicado=1 WHERE t.publicado=1 GROUP BY t.id_topico ORDER BY t.criado_em DESC')->fetchAll()));
     }
 
     public function ranking(): void
@@ -27,8 +27,37 @@ class CommunityController
 
     public function quiz(): void
     {
-        $rows=Database::connect()->query('SELECT id_quiz,pergunta,opcao_a,opcao_b,opcao_c,opcao_d FROM Quiz WHERE publicado=1 ORDER BY id_quiz')->fetchAll();
-        $this->json(array_map(static fn($q)=>['id'=>(int)$q['id_quiz'],'p'=>$q['pergunta'],'o'=>[$q['opcao_a'],$q['opcao_b'],$q['opcao_c'],$q['opcao_d']]],$rows));
+        $db = Database::connect();
+        $today = $this->quizDate();
+        $this->ensureDailyQuiz($db, $today);
+
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $userId = (int)($_SESSION['user']['id'] ?? 0);
+        $stmt = $db->prepare(
+            'SELECT d.id_quiz,d.pergunta,d.opcao_a,d.opcao_b,d.opcao_c,d.opcao_d,d.fonte,
+                    r.escolha AS escolha_anterior,r.correta AS acertou_antes,r.pontos AS pontos_anteriores,
+                    d.correta AS resposta_correta
+             FROM QuizDiario d
+             LEFT JOIN QuizResposta r ON r.data_quiz=d.data_quiz AND r.id_quiz=d.id_quiz AND r.id_usuario=?
+             WHERE d.data_quiz=? ORDER BY d.ordem'
+        );
+        $stmt->execute([$userId ?: null, $today]);
+        $rows = $stmt->fetchAll();
+        $questions = array_map(static function ($q) {
+            $answered = $q['escolha_anterior'] !== null;
+            return [
+                'id' => (int)$q['id_quiz'],
+                'p' => $q['pergunta'],
+                'o' => [$q['opcao_a'], $q['opcao_b'], $q['opcao_c'], $q['opcao_d']],
+                'answered' => $answered,
+                'choice' => $answered ? (int)$q['escolha_anterior'] : null,
+                'correct' => $answered ? (bool)$q['acertou_antes'] : null,
+                'correctChoice' => $answered ? (int)$q['resposta_correta'] : null,
+                'earned' => $answered ? (int)$q['pontos_anteriores'] : 0,
+                'source' => $answered ? $q['fonte'] : null,
+            ];
+        }, $rows);
+        $this->json(['date' => $today, 'questions' => $questions, 'correctPoints' => 10, 'incorrectPoints' => 2]);
     }
 
     public function create(): void
@@ -43,7 +72,7 @@ class CommunityController
 
     public function replies(string $id=''): void
     {
-        $stmt=Database::connect()->prepare('SELECT r.id_resposta,r.id_usuario,r.mensagem,r.criado_em,CASE WHEN p.ativo=1 THEN p.nome_pessoa ELSE \'Conta desativada\' END AS nome_pessoa FROM Resposta r JOIN Pessoa p ON p.id_pessoa=r.id_usuario WHERE r.id_topico=? AND r.publicado=1 ORDER BY r.criado_em'); $stmt->execute([(int)$id]); $this->json($stmt->fetchAll());
+        $stmt=Database::connect()->prepare('SELECT r.id_resposta,r.id_usuario,r.mensagem,r.criado_em,p.nome_pessoa FROM Resposta r JOIN Pessoa p ON p.id_pessoa=r.id_usuario AND p.ativo=1 WHERE r.id_topico=? AND r.publicado=1 ORDER BY r.criado_em'); $stmt->execute([(int)$id]); $this->json($stmt->fetchAll());
     }
 
     public function reply(string $id=''): void
@@ -83,7 +112,7 @@ class CommunityController
 
     public function reviews(string $id=''): void
     {
-        $stmt=Database::connect()->prepare('SELECT r.id_resenha,r.id_usuario,r.texto,r.data_post,CASE WHEN p.ativo=1 THEN p.nome_pessoa ELSE \'Conta desativada\' END AS nome_pessoa,COALESCE(AVG(a.nota),0) AS media,COUNT(a.id_usuario) AS votos FROM Resenha r JOIN Pessoa p ON p.id_pessoa=r.id_usuario LEFT JOIN AvaliacaoResenha a ON a.id_resenha=r.id_resenha WHERE r.id_artigo=? AND r.publicado=1 GROUP BY r.id_resenha ORDER BY media DESC,r.data_post DESC'); $stmt->execute([(int)$id]); $this->json($stmt->fetchAll());
+        $stmt=Database::connect()->prepare('SELECT r.id_resenha,r.id_usuario,r.texto,r.data_post,p.nome_pessoa,COALESCE(AVG(a.nota),0) AS media,COUNT(a.id_usuario) AS votos FROM Resenha r JOIN Pessoa p ON p.id_pessoa=r.id_usuario AND p.ativo=1 LEFT JOIN AvaliacaoResenha a ON a.id_resenha=r.id_resenha WHERE r.id_artigo=? AND r.publicado=1 GROUP BY r.id_resenha ORDER BY media DESC,r.data_post DESC'); $stmt->execute([(int)$id]); $this->json($stmt->fetchAll());
     }
 
     public function review(): void
@@ -114,14 +143,63 @@ class CommunityController
 
     public function answer(): void
     {
-        $this->requirePost(); if(session_status()===PHP_SESSION_NONE)session_start(); $u=$_SESSION['user']??null; $this->csrf();
-        $question=(int)($_POST['question']??0); $choice=(int)($_POST['choice']??-1);
-        if ($question<1 || $choice<0 || $choice>3) $this->json(['error'=>'Resposta inválida.'],422);
-        $find=Database::connect()->prepare('SELECT correta FROM Quiz WHERE id_quiz=? AND publicado=1');$find->execute([$question]);$correct=$find->fetchColumn();if($correct===false)$this->json(['error'=>'Pergunta não encontrada.'],404);
-        $earned=0;
-        if ($u && $choice===(int)$correct && $this->award((int)$u['id'],'quiz',date('Y-m-d').'-'.$question,10)) $earned=10;
-        $points=0;if($u){$stmt=Database::connect()->prepare('SELECT COALESCE(SUM(pontos),0) FROM Pontuacao WHERE id_usuario=?'); $stmt->execute([(int)$u['id']]);$points=(int)$stmt->fetchColumn();}
-        $this->json(['correct'=>$choice===(int)$correct,'correctChoice'=>(int)$correct,'earned'=>$earned,'points'=>$points]);
+        $this->requirePost();
+        if (session_status() === PHP_SESSION_NONE) session_start();
+        $this->csrf();
+        $user = $_SESSION['user'] ?? null;
+        $question = (int)($_POST['question'] ?? 0);
+        $choice = (int)($_POST['choice'] ?? -1);
+        if ($question < 1 || $choice < 0 || $choice > 3) $this->json(['error' => 'Resposta inválida.'], 422);
+
+        $db = Database::connect();
+        $today = $this->quizDate();
+        $find = $db->prepare('SELECT correta,fonte FROM QuizDiario WHERE data_quiz=? AND id_quiz=?');
+        $find->execute([$today, $question]);
+        $dailyQuestion = $find->fetch();
+        if (!$dailyQuestion) $this->json(['error' => 'Esta pergunta não faz parte do quiz de hoje.'], 404);
+
+        $correct = $choice === (int)$dailyQuestion['correta'];
+        $earned = $correct ? 10 : 2;
+        $points = 0;
+        $alreadyAnswered = false;
+
+        if ($user) {
+            $db->beginTransaction();
+            try {
+                $save = $db->prepare('INSERT INTO QuizResposta(id_usuario,data_quiz,id_quiz,escolha,correta,pontos) VALUES(?,?,?,?,?,?)');
+                $save->execute([(int)$user['id'], $today, $question, $choice, $correct ? 1 : 0, $earned]);
+                $reference = 'diario-' . $today . '-' . $question;
+                $award = $db->prepare('INSERT IGNORE INTO Pontuacao(id_usuario,atividade,referencia,pontos) VALUES(?,?,?,?)');
+                $award->execute([(int)$user['id'], 'quiz_diario', $reference, $earned]);
+                $db->commit();
+            } catch (\PDOException $e) {
+                if ($db->inTransaction()) $db->rollBack();
+                if ($e->getCode() !== '23000') throw $e;
+                $alreadyAnswered = true;
+                $prior = $db->prepare('SELECT escolha,correta,pontos FROM QuizResposta WHERE id_usuario=? AND data_quiz=? AND id_quiz=?');
+                $prior->execute([(int)$user['id'], $today, $question]);
+                $previous = $prior->fetch();
+                if (!$previous) throw $e;
+                $choice = (int)$previous['escolha'];
+                $correct = (bool)$previous['correta'];
+                $earned = (int)$previous['pontos'];
+            }
+            $sum = $db->prepare('SELECT COALESCE(SUM(pontos),0) FROM Pontuacao WHERE id_usuario=?');
+            $sum->execute([(int)$user['id']]);
+            $points = (int)$sum->fetchColumn();
+        } else {
+            $earned = 0;
+        }
+
+        $this->json([
+            'correct' => $correct,
+            'correctChoice' => (int)$dailyQuestion['correta'],
+            'choice' => $choice,
+            'earned' => $earned,
+            'points' => $points,
+            'alreadyAnswered' => $alreadyAnswered,
+            'source' => $dailyQuestion['fonte'],
+        ]);
     }
 
     public function readArticle(string $id=''): void
@@ -130,6 +208,69 @@ class CommunityController
     }
 
     private function award(int $user,string $activity,string $ref,int $points): bool { $s=Database::connect()->prepare('INSERT IGNORE INTO Pontuacao(id_usuario,atividade,referencia,pontos) VALUES(?,?,?,?)'); $s->execute([$user,$activity,$ref,$points]); return $s->rowCount()===1; }
+
+    private function quizDate(): string
+    {
+        return (new \DateTimeImmutable('now', new \DateTimeZone('America/Bahia')))->format('Y-m-d');
+    }
+
+    private function ensureDailyQuiz(\PDO $db, string $today): void
+    {
+        $db->beginTransaction();
+        try {
+            // Um registro fixo serializa a criação do quiz do dia, inclusive se várias pessoas
+            // abrirem a página ao mesmo tempo.
+            $db->query('SELECT id FROM QuizRotacao WHERE id=1 FOR UPDATE')->fetchColumn();
+            $check = $db->prepare('SELECT COUNT(*) FROM QuizDiario WHERE data_quiz=?');
+            $check->execute([$today]);
+            $existing = (int)$check->fetchColumn();
+            if ($existing >= 10) {
+                $db->commit();
+                return;
+            }
+
+            $missing = 10 - $existing;
+            $selectAvailable = static function () use ($db, $today): array {
+                $stmt = $db->prepare(
+                    'SELECT q.id_quiz,q.pergunta,q.opcao_a,q.opcao_b,q.opcao_c,q.opcao_d,q.correta,q.fonte
+                     FROM Quiz q
+                     LEFT JOIN QuizUso u ON u.id_quiz=q.id_quiz
+                     WHERE q.publicado=1 AND q.fonte IS NOT NULL AND q.fonte<>\'\'
+                       AND u.id_quiz IS NULL
+                       AND NOT EXISTS (SELECT 1 FROM QuizDiario d WHERE d.data_quiz=? AND d.id_quiz=q.id_quiz)
+                     ORDER BY RAND()'
+                );
+                $stmt->execute([$today]);
+                return $stmt->fetchAll();
+            };
+            $available = $selectAvailable();
+            if (count($available) < $missing) {
+                // Reinicia o ciclo sem liberar perguntas já usadas no quiz de hoje.
+                $reset = $db->prepare(
+                    'DELETE FROM QuizUso WHERE id_quiz NOT IN
+                     (SELECT id_quiz FROM QuizDiario WHERE data_quiz=?)'
+                );
+                $reset->execute([$today]);
+                $available = $selectAvailable();
+            }
+
+            $insertDaily = $db->prepare(
+                'INSERT INTO QuizDiario(data_quiz,id_quiz,ordem,pergunta,opcao_a,opcao_b,opcao_c,opcao_d,correta,fonte)
+                 VALUES(?,?,?,?,?,?,?,?,?,?)'
+            );
+            $markUsed = $db->prepare('INSERT INTO QuizUso(id_quiz,data_uso) VALUES(?,?) ON DUPLICATE KEY UPDATE data_uso=VALUES(data_uso)');
+            foreach (array_slice($available, 0, $missing) as $offset => $q) {
+                $order = $existing + $offset + 1;
+                $insertDaily->execute([$today,(int)$q['id_quiz'],$order,$q['pergunta'],$q['opcao_a'],$q['opcao_b'],$q['opcao_c'],$q['opcao_d'],(int)$q['correta'],$q['fonte']]);
+                $markUsed->execute([(int)$q['id_quiz'],$today]);
+            }
+            $db->commit();
+        } catch (\Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            throw $e;
+        }
+    }
+
     private function user(): array { if (session_status()===PHP_SESSION_NONE) session_start(); if (empty($_SESSION['user']['id'])) $this->json(['error'=>'Entre na sua conta para continuar.'],401); return $_SESSION['user']; }
     private function csrf(): void { if (session_status()===PHP_SESSION_NONE) session_start(); if (!hash_equals($_SESSION['csrf']??'',$_POST['csrf']??'')) $this->json(['error'=>'Sessão expirada. Atualize a página.'],403); }
     private function requirePost(): void { if ($_SERVER['REQUEST_METHOD']!=='POST') $this->json(['error'=>'Método não permitido.'],405); }

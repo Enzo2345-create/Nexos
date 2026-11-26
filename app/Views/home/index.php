@@ -20,7 +20,6 @@
           <li class="nav-item"><a class="nav-link" href="#noticias">Notícias</a></li>
           <li class="nav-item"><a class="nav-link" href="#comunidade">Comunidade</a></li>
           <li class="nav-item"><a class="nav-link" href="#glossario">Glossário</a></li>
-          <li class="nav-item"><a class="nav-link" href="<?= url('sobre') ?>">Sobre nós</a></li>
         </ul>
         <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0">
           <span class="points-pill" title="Seus pontos"><i class="bi bi-star-fill"></i> <span class="js-meus-pontos"><?= (int)($userPoints ?? 0) ?></span> pts</span>
@@ -340,21 +339,20 @@
             <div class="col-lg-5">
               <span class="kicker kicker-gold mb-3">Quiz educativo</span>
               <h2 class="mb-3">Quanto você sabe sobre a história étnico-racial do Brasil?</h2>
-              <p class="opacity-75 mb-0">Responda a 10 questões por dia. Ganhe <strong class="text-gold">10 pontos</strong> se acertar e <strong class="text-gold">2 pontos</strong> por continuar tentando. As fontes aparecem após cada resposta.</p>
+              <p class="opacity-75 mb-0">Leis, datas e conceitos. Cada resposta certa vale <strong class="text-gold">10 pontos</strong> no ranking.</p>
             </div>
             <div class="col-lg-7">
               <div class="quiz-panel">
                 <div class="d-flex justify-content-between small opacity-75 mb-2">
-                  <span><span id="quizContador">Pergunta 1 de 10</span> · <span id="quizData">Quiz do dia</span></span><span><span class="js-meus-pontos">0</span> pts</span>
+                  <span id="quizContador">Pergunta 1 de 4</span><span><span class="js-meus-pontos">0</span> pts</span>
                 </div>
-                <div class="progress progress-raizes mb-4"><div class="progress-bar" id="quizBarra" style="width: 10%"></div></div>
+                <div class="progress progress-raizes mb-4"><div class="progress-bar" id="quizBarra" style="width: 25%"></div></div>
                 <h3 class="mb-4" id="quizPergunta">Carregando...</h3>
                 <div id="quizOpcoes"></div>
                 <div class="d-flex justify-content-between align-items-center gap-3 mt-3">
                   <p class="small mb-0 opacity-75" id="quizFeedback"></p>
                   <button class="btn btn-raizes-gold d-none" id="quizProxima">Próxima <i class="bi bi-arrow-right"></i></button>
                 </div>
-                <p class="small opacity-75 mt-3 mb-0" id="quizFonte"></p>
               </div>
             </div>
           </div>
@@ -433,11 +431,10 @@
             <li><a href="#comunidade">Comunidade</a></li>
             <li><a href="#desafio">Desafio</a></li>
             <li><a href="#glossario">Glossário</a></li>
-            <li><a href="<?= url('sobre') ?>">Sobre nós</a></li>
           </ul>
         </div>
         <div class="col-6 col-lg-3">
-          <h5><a href="<?= url('sobre') ?>">Equipe</a></h5>
+          <h5>Equipe</h5>
           <ul class="list-unstyled d-grid gap-2">
             <li>Artur Rebouças Lima Costa</li>
             <li>Enzo Vinícius da Cruz Chaves</li>
